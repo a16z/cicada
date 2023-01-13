@@ -43,6 +43,10 @@ def bigExpMod(args):
             result = (result * p) % m
     encodeBigNumber(result)
 
+def bigMulMod(args):
+    [a, b, m] = parseInputs(args, 3)
+    encodeBigNumber((4 * a * b) % m)
+
 def parseInputs(args, n):
     if len(args.inputs) != n:
         raise Exception('Expected {} inputs, received {}'.format(n, len(args.inputs)))
@@ -74,5 +78,7 @@ if __name__ == "__main__":
         bigSubMod(args)
     elif args.operation == 'expMod':
         bigExpMod(args)
+    elif args.operation == 'mulMod':
+        bigMulMod(args)
     else:
         raise Exception('Unrecognized operation: {}'.format(args.operation))

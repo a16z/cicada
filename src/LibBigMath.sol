@@ -245,16 +245,16 @@ library LibBigMath {
         return trueIfEqual || a.words[7] < b.words[7];
     }
 
-    // function mulMod(BigNumber2048 memory a, BigNumber2048 memory b, BigNumber2048 memory modulus)
-    //     internal
-    //     view
-    //     returns (BigNumber2048 memory result)
-    // {
-    //     BigNumber2048 memory sumSquared = a.add(b).expMod(2, modulus);
-    //     BigNumber2048 memory differenceSquared = a.sub(b).expMod(2, modulus);
-    //     // Returns (a+b)^2 - (a-b)^2 = 4ab
-    //     return sumSquared.subMod(differenceSquared, modulus);
-    // }
+    function mulMod(BigNumber2048 memory a, BigNumber2048 memory b, BigNumber2048 memory modulus)
+        internal
+        view
+        returns (BigNumber2048 memory result)
+    {
+        BigNumber2048 memory sumSquared = a.add(b).expMod(2, modulus);
+        BigNumber2048 memory differenceSquared = a.subMod(b, modulus).expMod(2, modulus);
+        // Returns (a+b)^2 - (a-b)^2 = 4ab
+        return sumSquared.subMod(differenceSquared, modulus);
+    }
 
     function addMod(BigNumber2048 memory a, BigNumber2048 memory b, BigNumber2048 memory modulus)
         internal
@@ -272,7 +272,7 @@ library LibBigMath {
         pure
         returns (BigNumber2048 memory result)
     {
-        if (a.gt(b)) {
+        if (a.gte(b)) {
             return a.sub(b);
         } else {
             return modulus.sub(b.sub(a));

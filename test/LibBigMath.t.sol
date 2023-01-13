@@ -8,11 +8,8 @@ contract LibBigMathTest is Test {
 
     function testReferenceAdd(uint256[8] memory a, uint256[8] memory b)
         public
+        noOverflow(a, b)
     {
-        unchecked {
-            vm.assume(a[0] + b[0] > a[0]);
-            vm.assume(a[0] + b[0] < type(uint256).max);
-        }
         LibBigMath.BigNumber2048 memory bigA = LibBigMath.BigNumber2048(a);
         LibBigMath.BigNumber2048 memory bigB = LibBigMath.BigNumber2048(b);
         LibBigMath.BigNumber2048 memory pythonResult = _decodeBigNumber(_runPythonReference('add', bigA, bigB));
@@ -53,11 +50,8 @@ contract LibBigMathTest is Test {
         uint256[8] memory m
     )
         public
+        noOverflow(a, b)
     {
-        unchecked {
-            vm.assume(a[0] + b[0] > a[0]);
-            vm.assume(a[0] + b[0] < type(uint256).max);
-        }
         LibBigMath.BigNumber2048 memory bigA = LibBigMath.BigNumber2048(a);
         LibBigMath.BigNumber2048 memory bigB = LibBigMath.BigNumber2048(b);
         LibBigMath.BigNumber2048 memory bigM = LibBigMath.BigNumber2048(m);
@@ -111,14 +105,32 @@ contract LibBigMathTest is Test {
         assertTrue(solidityResult.eq(pythonResult));
     }
 
+    function testReferenceMulMod(
+        uint256[8] memory a, 
+        uint256[8] memory b,
+        uint256[8] memory m
+    )
+        public
+        noOverflow(a, b)
+    {
+        LibBigMath.BigNumber2048 memory bigA = LibBigMath.BigNumber2048(a);
+        LibBigMath.BigNumber2048 memory bigB = LibBigMath.BigNumber2048(b);
+        LibBigMath.BigNumber2048 memory bigM = LibBigMath.BigNumber2048(m);
+        vm.assume(bigA.lt(bigM) && bigB.lt(bigM));
+        LibBigMath.BigNumber2048 memory pythonResult = _decodeBigNumber(_runPythonMulMod(
+            bigA, 
+            bigB,
+            bigM
+        ));
+        LibBigMath.BigNumber2048 memory solidityResult = bigA.mulMod(bigB, bigM);
+        assertTrue(solidityResult.eq(pythonResult));
+    }
+
     function testGasAdd(uint256[8] memory a, uint256[8] memory b)
         public
         pure
+        noOverflow(a, b)
     {
-        unchecked {
-            vm.assume(a[0] + b[0] > a[0]);
-            vm.assume(a[0] + b[0] < type(uint256).max);
-        }
         LibBigMath.BigNumber2048 memory bigA = LibBigMath.BigNumber2048(a);
         LibBigMath.BigNumber2048 memory bigB = LibBigMath.BigNumber2048(b);
         bigA.add(bigB);
@@ -168,11 +180,8 @@ contract LibBigMathTest is Test {
     )
         public
         pure
+        noOverflow(a, b)
     {
-        unchecked {
-            vm.assume(a[0] + b[0] > a[0]);
-            vm.assume(a[0] + b[0] < type(uint256).max);
-        }
         LibBigMath.BigNumber2048 memory bigA = LibBigMath.BigNumber2048(a);
         LibBigMath.BigNumber2048 memory bigB = LibBigMath.BigNumber2048(b);
         LibBigMath.BigNumber2048 memory bigM = LibBigMath.BigNumber2048(m);
@@ -208,13 +217,26 @@ contract LibBigMathTest is Test {
         bigA.expMod(e, bigM);
     }
 
+    function testGasMulMod(
+        uint256[8] memory a, 
+        uint256[8] memory b,
+        uint256[8] memory m
+    )
+        public
+        view
+        noOverflow(a, b)
+    {
+        LibBigMath.BigNumber2048 memory bigA = LibBigMath.BigNumber2048(a);
+        LibBigMath.BigNumber2048 memory bigB = LibBigMath.BigNumber2048(b);
+        LibBigMath.BigNumber2048 memory bigM = LibBigMath.BigNumber2048(m);
+        vm.assume(bigA.lt(bigM) && bigB.lt(bigM));
+        bigA.mulMod(bigB, bigM);
+    }
+
     function testAddCommutative(uint256[8] memory a, uint256[8] memory b)
         public
+        noOverflow(a, b)
     {
-        unchecked {
-            vm.assume(a[0] + b[0] > a[0]);
-            vm.assume(a[0] + b[0] < type(uint256).max);
-        }
         LibBigMath.BigNumber2048 memory bigA = LibBigMath.BigNumber2048(a);
         LibBigMath.BigNumber2048 memory bigB = LibBigMath.BigNumber2048(b);
         LibBigMath.BigNumber2048 memory sum1 = bigA.add(bigB);
@@ -224,11 +246,8 @@ contract LibBigMathTest is Test {
 
     function testAddSub(uint256[8] memory a, uint256[8] memory b)
         public
+        noOverflow(a, b)
     {
-        unchecked {
-            vm.assume(a[0] + b[0] > a[0]);
-            vm.assume(a[0] + b[0] < type(uint256).max);
-        }
         LibBigMath.BigNumber2048 memory bigA = LibBigMath.BigNumber2048(a);
         LibBigMath.BigNumber2048 memory bigB = LibBigMath.BigNumber2048(b);
         LibBigMath.BigNumber2048 memory sum = bigA.add(bigB);
@@ -266,7 +285,28 @@ contract LibBigMathTest is Test {
         assertTrue(bigA.expMod(e, bigM).eq(expectedResult.toBigNumber2048()));
     }
 
+    function testMulModSmall(uint256 a, uint256 b, uint256 m)
+        public
+    {
+        vm.assume(a < m && b < m);
+        vm.assume(mulmod(a, b, m) <= type(uint256).max / 4);
+        LibBigMath.BigNumber2048 memory bigA = a.toBigNumber2048();
+        LibBigMath.BigNumber2048 memory bigB = b.toBigNumber2048();
+        LibBigMath.BigNumber2048 memory bigM = m.toBigNumber2048();
+
+        uint256 expectedResult = (4 * mulmod(a, b, m)) % m;
+        assertTrue(bigA.mulMod(bigB, bigM).eq(expectedResult.toBigNumber2048()));
+    }
+
     // ================================================================
+
+    modifier noOverflow(uint256[8] memory a, uint256[8] memory b) {
+        unchecked {
+            vm.assume(a[0] + b[0] > a[0]);
+            vm.assume(a[0] + b[0] < type(uint256).max);
+        }
+        _;
+    }
 
     function _decodeBigNumber(bytes memory encoded)
         private
@@ -354,6 +394,31 @@ contract LibBigMathTest is Test {
         pythonCommand[4] = '--inputs';
         pythonCommand[5] = toHexString(packedA);
         pythonCommand[6] = toHexString(packedE);
+        pythonCommand[7] = toHexString(packedM);
+        
+        return vm.ffi(pythonCommand);
+    }
+
+    function _runPythonMulMod(
+        LibBigMath.BigNumber2048 memory a, 
+        LibBigMath.BigNumber2048 memory b, 
+        LibBigMath.BigNumber2048 memory m
+    )
+        private
+        returns (bytes memory pythonResult)
+    {
+        bytes memory packedA = abi.encodePacked(a.words);
+        bytes memory packedB = abi.encodePacked(b.words);
+        bytes memory packedM = abi.encodePacked(m.words);
+
+        string[] memory pythonCommand = new string[](8);
+        pythonCommand[0] = 'python3';
+        pythonCommand[1] = 'test/big_math_reference.py';
+        pythonCommand[2] = '--operation';
+        pythonCommand[3] = 'mulMod';
+        pythonCommand[4] = '--inputs';
+        pythonCommand[5] = toHexString(packedA);
+        pythonCommand[6] = toHexString(packedB);
         pythonCommand[7] = toHexString(packedM);
         
         return vm.ffi(pythonCommand);
