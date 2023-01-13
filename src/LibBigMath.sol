@@ -279,36 +279,39 @@ library LibBigMath {
         }
     }
 
-    // function expMod(BigNumber2048 memory base, uint256 e, BigNumber2048 memory modulus)
-    //     internal
-    //     view
-    //     returns (BigNumber2048 memory result)
-    // {
-    //     assembly {
-    //         // Get free memory pointer
-    //         let p := mload(0x40)
+    function expMod(BigNumber2048 memory base, uint256 exponent, BigNumber2048 memory modulus)
+        internal
+        view
+        returns (BigNumber2048 memory result)
+    {
+        if (exponent == 0) {
+            return uint256(1).toBigNumber2048();
+        }
 
-    //         // Store parameters for the Expmod (0x05) precompile
-    //         mstore(p, 256)               // Length of Base
-    //         mstore(add(p, 0x20), 0x20)   // Length of Exponent
-    //         mstore(add(p, 0x40), 256)    // Length of Modulus
-    //         // Use Identity (0x04) precompile to memcpy the base
-    //         if iszero(staticcall(gas(), 0x04, add(base, 0x20), 256, add(p, 0x60), 256)) {
-    //             revert(0, 0)
-    //         }
-    //         mstore(add(p, add(0x60, 256)), e) // Exponent
-    //         // Use Identity (0x04) precompile to memcpy the modulus
-    //         if iszero(staticcall(gas(), 0x04, add(modulus, 0x20), 256, add(add(p, 0x80), 256), 256)) {
-    //             revert(0, 0)
-    //         }
-            
-    //         // Call 0x05 (EXPMOD) precompile
-    //         if iszero(staticcall(gas(), 0x05, p, add(add(0x80, 256), 256), result, 256)) {
-    //             revert(0, 0)
-    //         }
+        assembly {
+            // Get free memory pointer
+            let p := mload(0x40)
 
-    //         // Update free memory pointer
-    //         mstore(0x40, add(add(p, 512), 0x80))
-    //     }
-    // }
+            // Store parameters for the Expmod (0x05) precompile
+            mstore(p, 0x100)               // Length of base (8 * 32 = 256 bytes)
+            mstore(add(p, 0x20), 0x20)     // Length of exponent
+            mstore(add(p, 0x40), 0x100)    // Length of modulus (8 * 32 = 256 bytes)
+            // Use Identity (0x04) precompile to memcpy the base
+            if iszero(staticcall(gas(), 0x04, mload(base), 0x100, add(p, 0x60), 0x100)) {
+                revert(0, 0)
+            }
+            mstore(add(p, 0x160), exponent)
+            // Use Identity (0x04) precompile to memcpy the modulus
+            if iszero(staticcall(gas(), 0x04, mload(modulus), 0x100, add(p, 0x180), 0x100)) {
+                revert(0, 0)
+            }
+            // Call 0x05 (EXPMOD) precompile
+            if iszero(staticcall(gas(), 0x05, p, 0x280, mload(result), 0x100)) {
+                revert(0, 0)
+            }
+
+            // Update free memory pointer
+            mstore(0x40, add(p, 0x280))
+        }
+    }
 }

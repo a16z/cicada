@@ -93,6 +93,24 @@ contract LibBigMathTest is Test {
         assertTrue(solidityResult.eq(pythonResult));
     }
 
+    function testReferenceExpMod(
+        uint256[8] memory a, 
+        uint256 e,
+        uint256[8] memory m
+    )
+        public
+    {
+        LibBigMath.BigNumber2048 memory bigA = LibBigMath.BigNumber2048(a);
+        LibBigMath.BigNumber2048 memory bigM = LibBigMath.BigNumber2048(m);
+        LibBigMath.BigNumber2048 memory pythonResult = _decodeBigNumber(_runPythonExpMod(
+            bigA, 
+            e,
+            bigM
+        ));
+        LibBigMath.BigNumber2048 memory solidityResult = bigA.expMod(e, bigM);
+        assertTrue(solidityResult.eq(pythonResult));
+    }
+
     function testGasAdd(uint256[8] memory a, uint256[8] memory b)
         public
         pure
@@ -177,6 +195,19 @@ contract LibBigMathTest is Test {
         bigA.subMod(bigB, bigM);
     }
 
+    function testGasExpMod(
+        uint256[8] memory a, 
+        uint256 e,
+        uint256[8] memory m
+    )
+        public
+        view
+    {
+        LibBigMath.BigNumber2048 memory bigA = LibBigMath.BigNumber2048(a);
+        LibBigMath.BigNumber2048 memory bigM = LibBigMath.BigNumber2048(m);
+        bigA.expMod(e, bigM);
+    }
+
     function testAddCommutative(uint256[8] memory a, uint256[8] memory b)
         public
     {
@@ -212,6 +243,27 @@ contract LibBigMathTest is Test {
         LibBigMath.BigNumber2048 memory bigB = LibBigMath.BigNumber2048(b);
         vm.assume(bigA.gte(bigB));
         assertTrue(bigA.sub(bigB).add(bigB).eq(bigA));
+    }
+
+    function testExpModSmall(uint128 a, uint128 e, uint128 m)
+        public
+    {
+        vm.assume(m > 0);
+        uint256 expectedResult = 1;
+        if (e != 0) {
+            uint256 pow = uint256(a % m);
+            expectedResult = (e & 1 != 0) ? pow : 1;
+            for (uint256 i = 1; (1 << i) <= e; i++) {
+                pow = (pow ** 2) % m;
+                if (e & (1 << i) != 0) {
+                    expectedResult = (expectedResult * pow) % m;
+                }
+            }
+        }
+
+        LibBigMath.BigNumber2048 memory bigA = uint256(a).toBigNumber2048();
+        LibBigMath.BigNumber2048 memory bigM = m.toBigNumber2048();
+        assertTrue(bigA.expMod(e, bigM).eq(expectedResult.toBigNumber2048()));
     }
 
     // ================================================================
@@ -278,6 +330,31 @@ contract LibBigMathTest is Test {
         pythonCommand[5] = toHexString(packedA);
         pythonCommand[6] = toHexString(packedB);
         pythonCommand[7] = toHexString(packedC);
+        
+        return vm.ffi(pythonCommand);
+    }
+
+    function _runPythonExpMod(
+        LibBigMath.BigNumber2048 memory a, 
+        uint256 e,
+        LibBigMath.BigNumber2048 memory m
+    )
+        private
+        returns (bytes memory pythonResult)
+    {
+        bytes memory packedA = abi.encodePacked(a.words);
+        bytes memory packedE = abi.encodePacked(e);
+        bytes memory packedM = abi.encodePacked(m.words);
+
+        string[] memory pythonCommand = new string[](8);
+        pythonCommand[0] = 'python3';
+        pythonCommand[1] = 'test/big_math_reference.py';
+        pythonCommand[2] = '--operation';
+        pythonCommand[3] = 'expMod';
+        pythonCommand[4] = '--inputs';
+        pythonCommand[5] = toHexString(packedA);
+        pythonCommand[6] = toHexString(packedE);
+        pythonCommand[7] = toHexString(packedM);
         
         return vm.ffi(pythonCommand);
     }
