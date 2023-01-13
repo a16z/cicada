@@ -113,8 +113,28 @@ library LibBigMath {
             a.words[7] == b.words[7];
     }
 
+    function gt(BigNumber2048 memory a, BigNumber2048 memory b)
+        internal
+        pure
+        returns (bool)
+    {
+        return _gt(a, b, false);
+    }
+
     function gte(BigNumber2048 memory a, BigNumber2048 memory b)
         internal
+        pure
+        returns (bool)
+    {
+        return _gt(a, b, true);
+    }
+
+    function _gt(
+        BigNumber2048 memory a, 
+        BigNumber2048 memory b, 
+        bool trueIfEqual
+    )
+        private
         pure
         returns (bool)
     {
@@ -155,12 +175,32 @@ library LibBigMath {
         }
         if (a.words[7] < b.words[7]) {
             return false;
-        } 
-        return true;
+        }
+        return trueIfEqual || (a.words[7] > b.words[7]);
+    }
+
+    function lt(BigNumber2048 memory a, BigNumber2048 memory b)
+        internal
+        pure
+        returns (bool)
+    {
+        return _lt(a, b, false);
     }
 
     function lte(BigNumber2048 memory a, BigNumber2048 memory b)
         internal
+        pure
+        returns (bool)
+    {
+        return _lt(a, b, true);
+    }
+
+    function _lt(
+        BigNumber2048 memory a, 
+        BigNumber2048 memory b, 
+        bool trueIfEqual
+    )
+        private
         pure
         returns (bool)
     {
@@ -202,7 +242,7 @@ library LibBigMath {
         if (a.words[7] > b.words[7]) {
             return false;
         } 
-        return true;
+        return trueIfEqual || a.words[7] < b.words[7];
     }
 
     // function mulMod(BigNumber2048 memory a, BigNumber2048 memory b, BigNumber2048 memory modulus)
@@ -216,28 +256,28 @@ library LibBigMath {
     //     return sumSquared.subMod(differenceSquared, modulus);
     // }
 
-    // function addMod(BigNumber2048 memory a, BigNumber2048 memory b, BigNumber2048 memory modulus)
-    //     internal
-    //     pure
-    //     returns (BigNumber2048 memory result)
-    // {
-    //     result = a.add(b);
-    //     if (result.gte(modulus)) {
-    //         result = result.sub(modulus);
-    //     }
-    // }
+    function addMod(BigNumber2048 memory a, BigNumber2048 memory b, BigNumber2048 memory modulus)
+        internal
+        pure
+        returns (BigNumber2048 memory result)
+    {
+        result = a.add(b);
+        if (result.gte(modulus)) {
+            result = result.sub(modulus);
+        }
+    }
 
-    // function subMod(BigNumber2048 memory a, BigNumber2048 memory b, BigNumber2048 memory modulus)
-    //     internal
-    //     pure
-    //     returns (BigNumber2048 memory result)
-    // {
-    //     if (b.lte(a)) {
-    //         return a.sub(b);
-    //     } else {
-    //         return modulus.sub(b.sub(a));
-    //     }
-    // }
+    function subMod(BigNumber2048 memory a, BigNumber2048 memory b, BigNumber2048 memory modulus)
+        internal
+        pure
+        returns (BigNumber2048 memory result)
+    {
+        if (a.gt(b)) {
+            return a.sub(b);
+        } else {
+            return modulus.sub(b.sub(a));
+        }
+    }
 
     // function expMod(BigNumber2048 memory base, uint256 e, BigNumber2048 memory modulus)
     //     internal
