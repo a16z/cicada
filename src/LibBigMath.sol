@@ -1,11 +1,14 @@
 pragma solidity ^0.8;
 
 library LibBigMath {
+    using LibBigMath for *;
+
+    error Overflow(BigNumber2048 a, BigNumber2048 b);
+    error Underflow(BigNumber2048 a, BigNumber2048 b);
+
     struct BigNumber2048 {
         uint256[8] words;
     }
-
-    using LibBigMath for *;
     
     function toBigNumber2048(uint256 x)
         internal 
@@ -20,52 +23,69 @@ library LibBigMath {
         pure
         returns (BigNumber2048 memory c)
     {
-        unchecked {
-            c.words[7] = a.words[7] + b.words[7];
-            uint256 carry = c.words[7] < a.words[7] ? 1 : 0;
-            c.words[6] = a.words[6] + b.words[6] + carry;
-            carry = 
-                c.words[6] < a.words[6] || 
-                c.words[6] < b.words[6] || 
-                (a.words[6] == type(uint256).max && b.words[6] == type(uint256).max && carry == 1) ? 1 : 0;
-            c.words[5] = a.words[5] + b.words[5] + carry;
-            carry = 
-                c.words[5] < a.words[5] || 
-                c.words[5] < b.words[5] || 
-                (a.words[5] == type(uint256).max && b.words[5] == type(uint256).max && carry == 1) ? 1 : 0;
+        uint256 carry;
+        assembly {
+            let aPtr := mload(a)
+            let bPtr := mload(b)
+            let cPtr := mload(c)
 
-            c.words[4] = a.words[4] + b.words[4] + carry;
-            carry = 
-                c.words[4] < a.words[4] || 
-                c.words[4] < b.words[4] || 
-                (a.words[4] == type(uint256).max && b.words[4] == type(uint256).max && carry == 1) ? 1 : 0;
+            let aWord := mload(add(aPtr, 0xe0))
+            let bWord := mload(add(bPtr, 0xe0))
+            let sum := add(aWord, bWord)
+            mstore(add(cPtr, 0xe0), sum)
+            carry := lt(sum, aWord)
 
-            c.words[3] = a.words[3] + b.words[3] + carry;
-            carry = 
-                c.words[3] < a.words[3] || 
-                c.words[3] < b.words[3] || 
-                (a.words[3] == type(uint256).max && b.words[3] == type(uint256).max && carry == 1) ? 1 : 0;
+            aWord := mload(add(aPtr, 0xc0))
+            bWord := mload(add(bPtr, 0xc0))
+            sum := add(aWord, bWord)
+            let cWord := add(sum, carry)
+            mstore(add(cPtr, 0xc0), cWord)
+            carry := or(lt(sum, aWord), lt(cWord, carry))
 
-            c.words[2] = a.words[2] + b.words[2] + carry;
-            carry = 
-                c.words[2] < a.words[2] || 
-                c.words[2] < b.words[2] || 
-                (a.words[2] == type(uint256).max && b.words[2] == type(uint256).max && carry == 1) ? 1 : 0;
+            aWord := mload(add(aPtr, 0xa0))
+            bWord := mload(add(bPtr, 0xa0))
+            sum := add(aWord, bWord)
+            cWord := add(sum, carry)
+            mstore(add(cPtr, 0xa0), cWord)
+            carry := or(lt(sum, aWord), lt(cWord, sum))
 
-            c.words[1] = a.words[1] + b.words[1] + carry;
-            carry = 
-                c.words[1] < a.words[1] || 
-                c.words[1] < b.words[1] || 
-                (a.words[1] == type(uint256).max && b.words[1] == type(uint256).max && carry == 1) ? 1 : 0;
+            aWord := mload(add(aPtr, 0x80))
+            bWord := mload(add(bPtr, 0x80))
+            sum := add(aWord, bWord)
+            cWord := add(sum, carry)
+            mstore(add(cPtr, 0x80), cWord)
+            carry := or(lt(sum, aWord), lt(cWord, sum))
 
-            c.words[0] = a.words[0] + b.words[0] + carry;
-            carry = 
-                c.words[0] < a.words[0] || 
-                c.words[0] < b.words[0] || 
-                (a.words[0] == type(uint256).max && b.words[0] == type(uint256).max && carry == 1) ? 1 : 0;
-            if (carry != 0) {
-                revert("overflow");
-            }
+            aWord := mload(add(aPtr, 0x60))
+            bWord := mload(add(bPtr, 0x60))
+            sum := add(aWord, bWord)
+            cWord := add(sum, carry)
+            mstore(add(cPtr, 0x60), cWord)
+            carry := or(lt(sum, aWord), lt(cWord, sum))
+
+            aWord := mload(add(aPtr, 0x40))
+            bWord := mload(add(bPtr, 0x40))
+            sum := add(aWord, bWord)
+            cWord := add(sum, carry)
+            mstore(add(cPtr, 0x40), cWord)
+            carry := or(lt(sum, aWord), lt(cWord, sum))
+
+            aWord := mload(add(aPtr, 0x20))
+            bWord := mload(add(bPtr, 0x20))
+            sum := add(aWord, bWord)
+            cWord := add(sum, carry)
+            mstore(add(cPtr, 0x20), cWord)
+            carry := or(lt(sum, aWord), lt(cWord, sum))
+
+            aWord := mload(aPtr)
+            bWord := mload(bPtr)
+            sum := add(aWord, bWord)
+            cWord := add(sum, carry)
+            mstore(cPtr, cWord)
+            carry := or(lt(sum, aWord), lt(cWord, sum))
+        }
+        if (carry != 0) {
+            revert Overflow(a, b);
         }
     }
 
@@ -92,7 +112,7 @@ library LibBigMath {
             c.words[0] = a.words[0] - b.words[0] - carry;
             carry = ((a.words[0] < b.words[0]) || (a.words[0] == b.words[0] && carry == 1)) ? 1 : 0;
             if (carry != 0) {
-                revert("underflow");
+                revert Underflow(a, b);
             }
         }
     }
@@ -296,10 +316,12 @@ library LibBigMath {
             mstore(p, 0x100)               // Length of base (8 * 32 = 256 bytes)
             mstore(add(p, 0x20), 0x20)     // Length of exponent
             mstore(add(p, 0x40), 0x100)    // Length of modulus (8 * 32 = 256 bytes)
+
             // Use Identity (0x04) precompile to memcpy the base
             if iszero(staticcall(gas(), 0x04, mload(base), 0x100, add(p, 0x60), 0x100)) {
                 revert(0, 0)
             }
+            // Store the exponent
             mstore(add(p, 0x160), exponent)
             // Use Identity (0x04) precompile to memcpy the modulus
             if iszero(staticcall(gas(), 0x04, mload(modulus), 0x100, add(p, 0x180), 0x100)) {
