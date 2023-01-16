@@ -94,26 +94,62 @@ library LibBigMath {
         pure
         returns (BigNumber2048 memory c)
     {
-        unchecked {
-            c.words[7] = a.words[7] - b.words[7];
-            uint256 carry = a.words[7] < b.words[7] ? 1 : 0;
-            c.words[6] = a.words[6] - b.words[6] - carry;
-            carry = ((a.words[6] < b.words[6]) || (a.words[6] == b.words[6] && carry == 1)) ? 1 : 0;
-            c.words[5] = a.words[5] - b.words[5] - carry;
-            carry = ((a.words[5] < b.words[5]) || (a.words[5] == b.words[5] && carry == 1)) ? 1 : 0;
-            c.words[4] = a.words[4] - b.words[4] - carry;
-            carry = ((a.words[4] < b.words[4]) || (a.words[4] == b.words[4] && carry == 1)) ? 1 : 0;
-            c.words[3] = a.words[3] - b.words[3] - carry;
-            carry = ((a.words[3] < b.words[3]) || (a.words[3] == b.words[3] && carry == 1)) ? 1 : 0;
-            c.words[2] = a.words[2] - b.words[2] - carry;
-            carry = ((a.words[2] < b.words[2]) || (a.words[2] == b.words[2] && carry == 1)) ? 1 : 0;
-            c.words[1] = a.words[1] - b.words[1] - carry;
-            carry = ((a.words[1] < b.words[1]) || (a.words[1] == b.words[1] && carry == 1)) ? 1 : 0;
-            c.words[0] = a.words[0] - b.words[0] - carry;
-            carry = ((a.words[0] < b.words[0]) || (a.words[0] == b.words[0] && carry == 1)) ? 1 : 0;
-            if (carry != 0) {
-                revert Underflow(a, b);
-            }
+        uint256 carry;
+        assembly {
+            let aPtr := mload(a)
+            let bPtr := mload(b)
+            let cPtr := mload(c)
+
+            let aWord := mload(add(aPtr, 0xe0))
+            let bWord := mload(add(bPtr, 0xe0))
+            let diff := sub(aWord, bWord)
+            mstore(add(cPtr, 0xe0), diff)
+            carry := lt(aWord, bWord)
+
+            aWord := mload(add(aPtr, 0xc0))
+            bWord := mload(add(bPtr, 0xc0))
+            diff := sub(aWord, bWord)
+            mstore(add(cPtr, 0xc0), sub(diff, carry))
+            carry := or(lt(aWord, bWord), lt(diff, carry))
+
+            aWord := mload(add(aPtr, 0xa0))
+            bWord := mload(add(bPtr, 0xa0))
+            diff := sub(aWord, bWord)
+            mstore(add(cPtr, 0xa0), sub(diff, carry))
+            carry := or(lt(aWord, bWord), lt(diff, carry))
+
+            aWord := mload(add(aPtr, 0x80))
+            bWord := mload(add(bPtr, 0x80))
+            diff := sub(aWord, bWord)
+            mstore(add(cPtr, 0x80), sub(diff, carry))
+            carry := or(lt(aWord, bWord), lt(diff, carry))
+
+            aWord := mload(add(aPtr, 0x60))
+            bWord := mload(add(bPtr, 0x60))
+            diff := sub(aWord, bWord)
+            mstore(add(cPtr, 0x60), sub(diff, carry))
+            carry := or(lt(aWord, bWord), lt(diff, carry))
+
+            aWord := mload(add(aPtr, 0x40))
+            bWord := mload(add(bPtr, 0x40))
+            diff := sub(aWord, bWord)
+            mstore(add(cPtr, 0x40), sub(diff, carry))
+            carry := or(lt(aWord, bWord), lt(diff, carry))
+
+            aWord := mload(add(aPtr, 0x20))
+            bWord := mload(add(bPtr, 0x20))
+            diff := sub(aWord, bWord)
+            mstore(add(cPtr, 0x20), sub(diff, carry))
+            carry := or(lt(aWord, bWord), lt(diff, carry))
+
+            aWord := mload(aPtr)
+            bWord := mload(bPtr)
+            diff := sub(aWord, bWord)
+            mstore(cPtr, sub(diff, carry))
+            carry := or(lt(aWord, bWord), lt(diff, carry))
+        }
+        if (carry != 0) {
+            revert Underflow(a, b);
         }
     }
 
@@ -196,7 +232,7 @@ library LibBigMath {
         if (a.words[7] < b.words[7]) {
             return false;
         }
-        return trueIfEqual || (a.words[7] > b.words[7]);
+        return trueIfEqual || a.words[7] > b.words[7];
     }
 
     function lt(BigNumber2048 memory a, BigNumber2048 memory b)
