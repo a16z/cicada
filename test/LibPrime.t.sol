@@ -13,6 +13,10 @@ contract LibPrimeWrapper {
     function pocklington(uint256 n, LibPrime.PocklingtonStep[] memory certificate) external view {
         n.pocklington(certificate);
     }
+
+    function lucas(uint256 n) external returns (bool) {
+        return n.lucas();
+    }
 }
 
 contract LibPrimeTest is Test {
@@ -20,6 +24,62 @@ contract LibPrimeTest is Test {
 
     function setUp() external {
         lib = new LibPrimeWrapper();
+    }
+
+    function testLucasPrimes() external {
+        // console.logBool(lib.lucas(3));
+        // console.logBool(lib.lucas(5));
+        // console.logBool(lib.lucas(7));
+        // console.logBool(lib.lucas(11));
+        // console.logBool(lib.lucas(13));
+
+        // console.logBool(lib.lucas(2417));
+        // console.logBool(lib.lucas(3391));
+        // console.logBool(lib.lucas(3169));
+        // console.logBool(lib.lucas(1063));
+        // console.logBool(lib.lucas(1861));
+        
+        // console.logBool(lib.lucas(343050853));
+        // console.logBool(lib.lucas(146338733));
+        // console.logBool(lib.lucas(470500931));
+        // console.logBool(lib.lucas(763313693));
+        // console.logBool(lib.lucas(360437089));
+
+        // console.logBool(lib.lucas(5278624511347138559));
+        // console.logBool(lib.lucas(5831975835206732999));
+        // console.logBool(lib.lucas(7459925597605319809));
+        // console.logBool(lib.lucas(4396776548256771389));
+        // console.logBool(lib.lucas(3691911297024838061));
+
+        console.logBool(lib.lucas(1125540086003892878803180776828183430567643582896516824516711208213767778259));
+        console.logBool(lib.lucas(8151264910564214172552510538961784892584498710314126382318393854523032748717));
+        console.logBool(lib.lucas(9341551731633778114822211379357199272851770827068248495866801830534051079929));
+        console.logBool(lib.lucas(6383743443909871561251952811638977086566121113380770830041649864793597646919));
+        console.logBool(lib.lucas(2197237718394458030831647368114264829507199079704407667327722758706981233497));
+        console.logBool(lib.lucas(9064410868229390086903624029203948821248589545509547153592200186831638728037));
+        console.logBool(lib.lucas(1799466658399057863907043434608765089771426415844247818936512270861804814529));
+        console.logBool(lib.lucas(7958107354969503546281116282192284922725110310373243636780351171294849091149));
+        console.logBool(lib.lucas(6233608841289520883910733449408872496191252688032601148221449555432858393371));
+        console.logBool(lib.lucas(8232380694307874843762241985653295453383187296264055776639176195540846588177));
+        console.logBool(lib.lucas(5034174091600194978581305209190743984142140769305288608948960772413483626687));
+        console.logBool(lib.lucas(8340069717972680297994903766600336241596238101580434803328056533048918734499));
+        console.logBool(lib.lucas(1400537736944484887219968349997533796837304349170394400672628030568034687019));
+        console.logBool(lib.lucas(7520612482180968453530128273879667845425382183748651655131527203600612317503));
+        console.logBool(lib.lucas(1568708150223417680875870983919763865151824932396420592501674440793940383849));
+    }
+
+    function testLucasComposites() external {
+        console.logBool(lib.lucas(6592394496996111253));
+        console.logBool(lib.lucas(8165209572335129957));
+        console.logBool(lib.lucas(6213159877337080027));
+        console.logBool(lib.lucas(7491486334248262751));
+        console.logBool(lib.lucas(6345387166281832349));
+
+        console.logBool(lib.lucas(14584769500336594123));
+        console.logBool(lib.lucas(10910354519400022873));
+        console.logBool(lib.lucas(13930631116606024787));
+        console.logBool(lib.lucas(16975058844218091667));
+        console.logBool(lib.lucas(15940595461033801879));
     }
 
     function testMillerRabinPrimes() external view {

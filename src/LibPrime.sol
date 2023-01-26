@@ -3,6 +3,191 @@ pragma solidity ^0.8;
 
 library LibPrime {
     using LibPrime for uint256;
+
+    function bailliePSW(uint256 n)
+        internal
+        view
+    {
+        // Miller-Rabin with x=2
+        // Lucas
+    }
+
+    function lucas(uint256 n)
+        internal
+        view
+        returns (bool)
+    {
+        uint256 p = 3;
+        uint256 d;
+        unchecked {
+            while (true) {
+                d = p * p - 4;
+                int256 j = jacobi(d, n);
+                if (j == -1) {
+                    break;
+                }
+                if (j == 0) {
+                    return n == p + 2;
+                }
+                // Omit square check
+                p++;
+            }
+        }
+
+        uint256 s = n + 1;
+        uint256 r = trailingZeros(s);
+        s >>= r;
+        uint256 nm2;
+        unchecked { nm2 = n - 2; }
+
+        uint256 vk = 2;
+        uint256 vk1 = p;
+        for (uint256 bit = 1 << bitLen(s); bit != 0; bit >>= 1) {
+            if (s & bit != 0) {
+                // vk = (vk * vk1 + n - p) % n;
+                // vk1 = (vk1 * vk1 + nm2) % n;
+                assembly {
+                    vk := mulmod(vk, vk1, n)
+                    vk := addmod(vk, sub(n, p), n)
+                    vk1 := mulmod(vk1, vk1, n)
+                    vk1 := addmod(vk1, nm2, n)
+                }
+            } else {
+                // vk1 = (vk * vk1 + n - p) % n;
+                // vk = (vk * vk + nm2) % n;
+                assembly {
+                    vk1 := mulmod(vk, vk1, n)
+                    vk1 := addmod(vk1, sub(n, p), n)
+                    vk := mulmod(vk, vk, n)
+                    vk := addmod(vk, nm2, n)
+                }
+            }
+        }
+
+        if (vk == 2 || vk == nm2) {
+            uint256 t1;
+            uint256 t2;
+            assembly {
+                t1 := mulmod(vk, p, n)
+                t2 := mulmod(vk1, 2, n)
+            }
+            if (t1 == t2) {
+                return true;
+            }
+        }
+
+        uint256 rLess1;
+        unchecked { rLess1 = r - 1; }
+        for (uint256 t = 0; t != rLess1; ++t) {
+            if (vk == 0) {
+                return true;
+            }
+            if (vk == 2) {
+                return false;
+            }
+            // vk = (vk * vk + nm2) % n;
+            assembly {
+                vk := mulmod(vk, vk, n)
+                vk := addmod(vk, nm2, n)
+            }
+        }
+        return false;
+    }
+
+    bytes32 constant HIGHEST_BIT_DE_BRUIJN_TABLE = 0x0009010a0d15021d0b0e10121619031e080c141c0f111807131b17061a05041f;
+    uint256 constant HIGHEST_BIT_DE_BRUIJN_SEQUENCE = 130329821;
+    function bitLen(uint256 v)
+        private
+        pure
+        returns (uint256 r)
+    {
+        unchecked {
+            assembly {
+                let f := shl(7, gt(v, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF))
+                r := or(r, f)
+                v := shr(f, v)
+
+                f := shl(6, gt(v, 0xFFFFFFFFFFFFFFFF))
+                r := or(r, f)
+                v := shr(f, v)
+
+                f := shl(5, gt(v, 0xFFFFFFFF))
+                r := or(r, f)
+                v := shr(f, v)
+
+                v := or(v, shr(1, v))
+                v := or(v, shr(2, v))
+                v := or(v, shr(4, v))
+                v := or(v, shr(8, v))
+                v := or(v, shr(16, v))
+            }
+            uint256 index = uint32(v * HIGHEST_BIT_DE_BRUIJN_SEQUENCE) >> 27;
+            assembly {
+                r := add(r, byte(index, HIGHEST_BIT_DE_BRUIJN_TABLE))
+            }
+        }
+    }
+
+    bytes32 constant LOWEST_BIT_DE_BRUIJN_TABLE = 0x00011c021d0e18031e16140f191104081f1b0d17151310071a0c12060b050a09;
+    uint256 constant LOWEST_BIT_DE_BRUIJN_SEQUENCE = 125613361;
+    function trailingZeros(uint256 v)
+        private
+        pure
+        returns (uint256 r)
+    {
+        unchecked {
+            if (v & 0xffffffffffffffffffffffffffffffff == 0) {
+                r = 128;
+                v >>= 128;
+            }
+            if (v & 0xffffffffffffffff == 0) {
+                r += 64;
+                v >>= 64;
+            }
+            if (v & 0xffffffff == 0) {
+                r += 32;
+                v >>= 32;
+            }
+            int256 negV = -int256(v);
+            uint256 index = uint32((v & uint256(negV)) * LOWEST_BIT_DE_BRUIJN_SEQUENCE) >> 27;
+            assembly {
+                r := add(r, byte(index, LOWEST_BIT_DE_BRUIJN_TABLE))
+            }
+        }
+    }
+
+    function jacobi(uint256 d, uint256 n)
+        internal
+        pure
+        returns (int256 j)
+    {
+        // require(n & 1 == 1);
+        unchecked {
+            d = d % n;
+            j = 1;
+            uint256 r;
+            while (d != 0) {
+                while (d & 1 == 0) {
+                    d = d >> 1;
+                    r = n & 7; // n % 8
+                    if (r == 3 || r == 5) {
+                        j = -j;
+                    }
+                }
+                r = n;
+                n = d;
+                d = r;
+                if (d & 3 == 3 && n & 3 == 3) { // d % 4 == 3 && n % 4 == 3
+                    j = -j;
+                }
+                d = d % n;
+            }
+            if (n == 1) {
+                return j;
+            }
+            return 0;
+        }
+    }
     
     error EvenNumber(uint256 n);
     error InvalidFactorization(uint256 expectedProduct, uint256 actualProduct);
@@ -131,18 +316,20 @@ library LibPrime {
                     revert PocklingtonCheck2Failed(n, b, p);
                 }
 
-                if (p == 2) {
-                    continue;
-                }
-                if (p & 1 == 0) {
-                    revert EvenNumber(p);
-                }
                 if (p < 512) {
+                    if (p == 2) {
+                        continue;
+                    } else if (p & 1 == 0) {
+                        revert EvenNumber(p);
+                    }
                     if ((1 << (p >> 1)) & PRIMES_BIT_MASK == 0) {
                         revert NotPrime(p);
                     } else {
                         continue;
                     }
+                }
+                if (p & 1 == 0) {
+                    revert EvenNumber(p);
                 }
                 unchecked { k++; }
                 if (p - 1 != certificate[k].F * certificate[k].R) {
