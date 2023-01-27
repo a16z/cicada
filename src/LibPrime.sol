@@ -7,6 +7,7 @@ library LibPrime {
     function bailliePSW(uint256 n)
         internal
         view
+        returns (bool)
     {
         // Miller-Rabin with x=2
         // Lucas
@@ -14,7 +15,7 @@ library LibPrime {
 
     function lucas(uint256 n)
         internal
-        view
+        pure
         returns (bool)
     {
         uint256 p = 3;
@@ -161,31 +162,29 @@ library LibPrime {
         pure
         returns (int256 j)
     {
-        // require(n & 1 == 1);
-        unchecked {
-            d = d % n;
-            j = 1;
-            uint256 r;
-            while (d != 0) {
-                while (d & 1 == 0) {
-                    d = d >> 1;
-                    r = n & 7; // n % 8
-                    if (r == 3 || r == 5) {
-                        j = -j;
+        assembly {
+            d := mod(d, n)
+            j := 1
+            let r := 0
+            for {} iszero(iszero(d)) {} {
+                for {} iszero(and(d, 1)) {} {
+                    d := shr(1, d)
+                    r := and(n, 7)
+                    if or(eq(r, 3), eq(r, 5)) {
+                        j := sub(0, j)
                     }
                 }
-                r = n;
-                n = d;
-                d = r;
-                if (d & 3 == 3 && n & 3 == 3) { // d % 4 == 3 && n % 4 == 3
-                    j = -j;
+                r := n
+                n := d
+                d := r
+                if and(eq(and(d, 3), 3), eq(and(n, 3), 3)) {
+                    j := sub(0, j)
                 }
-                d = d % n;
+                d := mod(d, n)
             }
-            if (n == 1) {
-                return j;
+            if iszero(eq(n, 1)) {
+                j := 0
             }
-            return 0;
         }
     }
     
@@ -241,26 +240,24 @@ library LibPrime {
     function pocklington(uint256 n, PocklingtonStep[] memory certificate) 
         internal 
         view 
+        returns (bool)
     {
         if (n & 1 == 0) {
-            revert EvenNumber(n);
+            return false;
         }
         uint256 numSteps = certificate.length;
         if (numSteps == 0) {
             if (n > 512) {
-                revert TooBigForBaseCase(n);
+                return false;
             }
             if ((1 << (n >> 1)) & PRIMES_BIT_MASK == 0) {
-                revert NotPrime(n);
+                return false;
             }
-            return;
+            return true;
         }
 
         if (n - 1 != certificate[0].F * certificate[0].R) {
-            revert InvalidFactorization(
-                n - 1, 
-                certificate[0].F * certificate[0].R
-            );
+            return false;
         }
 
         assembly {
@@ -280,10 +277,10 @@ library LibPrime {
             uint256 F = step.F;
             uint256 R = step.R;
             if (R >= F) {
-                revert InvalidFR(F, R);
+                return false;
             }
             if (!coprime(F, R)) {
-                revert NotCoprime(F, R);
+                return false;
             }
 
             uint256 FR;
@@ -306,48 +303,46 @@ library LibPrime {
                 }
 
                 if (expMod(b, FR, n) != 1) {
-                    revert PocklingtonCheck1Failed(n, b);
+                    return false;
                 }
                 uint256 exponent;
                 assembly {
                     exponent := div(FR, p)
                 }
                 if (!coprime(n, expMod(b, exponent, n) - 1)) {
-                    revert PocklingtonCheck2Failed(n, b, p);
+                    return false;
                 }
 
                 if (p < 512) {
                     if (p == 2) {
                         continue;
                     } else if (p & 1 == 0) {
-                        revert EvenNumber(p);
+                        return false;
                     }
                     if ((1 << (p >> 1)) & PRIMES_BIT_MASK == 0) {
-                        revert NotPrime(p);
+                        return false;
                     } else {
                         continue;
                     }
                 }
                 if (p & 1 == 0) {
-                    revert EvenNumber(p);
+                    return false;
                 }
                 unchecked { k++; }
                 if (p - 1 != certificate[k].F * certificate[k].R) {
-                    revert InvalidFactorization(
-                        p - 1, 
-                        certificate[k].F * certificate[k].R
-                    );
+                    return false;
                 }
             }
 
             if (prod != F) {
-                revert InvalidFactorization(F, prod);
+                return false;
             }
         }
         assembly {
             // Update free memory pointer
             mstore(0x40, add(mload(0x40), 0xc0))
         }
+        return true;
     }
 
     function coprime(uint256 a, uint256 b)
@@ -370,10 +365,14 @@ library LibPrime {
     // Use Miller-Rabin test to probabilistically check whether n>3 is prime.
     // Based on Dankrad Feist's implementation:
     // https://github.com/dankrad/rsa-bounty/blob/master/contract/rsa_bounty.sol
-    function millerRabin(uint256 n) internal view {
+    function millerRabin(uint256 n) 
+        internal 
+        view
+        returns (bool) 
+    {
         unchecked {
             if (n & 1 == 0) {
-                revert EvenNumber(n);
+                return false;
             }
             uint256 d = n - 1;
             uint256 r = 0;
@@ -426,13 +425,14 @@ library LibPrime {
                     }
                 }
                 if (!check_passed) {
-                    revert MillerRabinCheckFailed();
+                    return false;
                 }
             }
             assembly {
                 // Update free memory pointer
                 mstore(0x40, add(memPtr, 0xc0))
             }
+            return true;
         }
     }
 
