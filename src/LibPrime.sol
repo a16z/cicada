@@ -9,8 +9,7 @@ library LibPrime {
         view
         returns (bool)
     {
-        // Miller-Rabin with x=2
-        // Lucas
+        return _millerRabinBase2(n) && lucas(n);
     }
 
     function lucas(uint256 n)
@@ -302,14 +301,14 @@ library LibPrime {
                     prod *= p ** a;
                 }
 
-                if (expMod(b, FR, n) != 1) {
+                if (_pocklingtonExpMod(b, FR, n) != 1) {
                     return false;
                 }
                 uint256 exponent;
                 assembly {
                     exponent := div(FR, p)
                 }
-                if (!coprime(n, expMod(b, exponent, n) - 1)) {
+                if (!coprime(n, _pocklingtonExpMod(b, exponent, n) - 1)) {
                     return false;
                 }
 
@@ -436,7 +435,57 @@ library LibPrime {
         }
     }
 
-    function expMod(uint256 base, uint256 exponent, uint256 modulus)
+    function _millerRabinBase2(uint256 n)
+        private
+        view
+        returns (bool)
+    {
+        unchecked {
+            uint256 d = n - 1;
+            uint256 r = 0;
+
+            assembly {
+                for {} iszero(and(d, 1)) {} {
+                    d := shr(1, d)
+                    r := add(r, 1)
+                }
+            }
+
+            uint256 x;
+            assembly { 
+                // Get free memory pointer
+                let p := mload(0x40)
+                // Store parameters for the Expmod (0x05) precompile
+                mstore(p, 0x20)             // Length of Base
+                mstore(add(p, 0x20), 0x20)  // Length of Exponent
+                mstore(add(p, 0x40), 0x20)  // Length of Modulus
+                mstore(add(p, 0x60), 2)     // Base
+                mstore(add(p, 0x80), d)     // Exponent
+                mstore(add(p, 0xa0), n)     // Modulus
+                // Call 0x05 (EXPMOD) precompile
+                if iszero(staticcall(gas(), 0x05, p, 0xc0, 0, 0x20)) {
+                    revert(0, 0)
+                }
+                x := mload(0)
+                // Update free memory pointer
+                mstore(0x40, add(p, 0xc0))
+            }
+
+            if (x == 1 || x == n - 1) {
+                return true;
+            }
+
+            for (uint256 j = 1; j != r; ++j) {
+                x = mulmod(x, x, n);
+                if (x == n - 1) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    function _pocklingtonExpMod(uint256 base, uint256 exponent, uint256 modulus)
         private
         view
         returns (uint256 result)
