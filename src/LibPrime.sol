@@ -2,20 +2,8 @@ pragma solidity ^0.8;
 
 
 library LibPrime {
-    using LibPrime for uint256;
-    
-    error EvenNumber(uint256 n);
-    error InvalidFactorization(uint256 expectedProduct, uint256 actualProduct);
-    error NotCoprime(uint256 a, uint256 b);
-    error TooBigForBaseCase(uint256 n);
-    error PocklingtonCheck1Failed(uint256 n, uint256 b);
-    error PocklingtonCheck2Failed(uint256 n, uint256 b, uint256 p);
-    error InvalidFR(uint256 F, uint256 R);
-    error NotPrime(uint256 n);
-    error MillerRabinCheckFailed();
 
-    // 33542727543779740430490605455518991165603357328065026694872905989203690834798
-    uint256 constant PRIMES_BIT_MASK = 
+    uint256 private constant PRIMES_BIT_MASK = 
         (1 << (3 >> 1))   | (1 << (5 >> 1))   | (1 << (7 >> 1))   | (1 << (11 >> 1))  |
         (1 << (13 >> 1))  | (1 << (17 >> 1))  | (1 << (19 >> 1))  | (1 << (23 >> 1))  |
         (1 << (29 >> 1))  | (1 << (31 >> 1))  | (1 << (37 >> 1))  | (1 << (41 >> 1))  |
@@ -53,29 +41,215 @@ library LibPrime {
         PocklingtonNums[] nums;
     }
 
+    function bailliePSW(uint256 n)
+        internal
+        view
+        returns (bool)
+    {
+        return lucas(n) && _millerRabinBase2(n);
+    }
+
+    function lucas(uint256 n)
+        internal
+        pure
+        returns (bool)
+    {
+        if (n < 512) {
+            return _checkSmallPrimes(n);
+        }
+
+        uint256 p = 3;
+        uint256 d;
+        unchecked {
+            while (true) {
+                d = p * p - 4;
+                int256 j = jacobi(d, n);
+                if (j == -1) {
+                    break;
+                }
+                if (j == 0) {
+                    return n == p + 2;
+                }
+                // Omit square check
+                p++;
+            }
+        }
+
+        uint256 s = n + 1;
+        uint256 r = trailingZeros(s);
+        s >>= r;
+        uint256 nm2;
+        unchecked { nm2 = n - 2; }
+
+        uint256 vk = 2;
+        uint256 vk1 = p;
+        for (uint256 bit = 1 << bitLen(s); bit != 0; bit >>= 1) {
+            if (s & bit != 0) {
+                // vk = (vk * vk1 + n - p) % n;
+                // vk1 = (vk1 * vk1 + nm2) % n;
+                assembly {
+                    vk := mulmod(vk, vk1, n)
+                    vk := addmod(vk, sub(n, p), n)
+                    vk1 := mulmod(vk1, vk1, n)
+                    vk1 := addmod(vk1, nm2, n)
+                }
+            } else {
+                // vk1 = (vk * vk1 + n - p) % n;
+                // vk = (vk * vk + nm2) % n;
+                assembly {
+                    vk1 := mulmod(vk, vk1, n)
+                    vk1 := addmod(vk1, sub(n, p), n)
+                    vk := mulmod(vk, vk, n)
+                    vk := addmod(vk, nm2, n)
+                }
+            }
+        }
+
+        if (vk == 2 || vk == nm2) {
+            uint256 t1;
+            uint256 t2;
+            assembly {
+                t1 := mulmod(vk, p, n)
+                t2 := mulmod(vk1, 2, n)
+            }
+            if (t1 == t2) {
+                return true;
+            }
+        }
+
+        uint256 rLess1;
+        unchecked { rLess1 = r - 1; }
+        for (uint256 t = 0; t != rLess1; ++t) {
+            if (vk == 0) {
+                return true;
+            }
+            if (vk == 2) {
+                return false;
+            }
+            // vk = (vk * vk + nm2) % n;
+            assembly {
+                vk := mulmod(vk, vk, n)
+                vk := addmod(vk, nm2, n)
+            }
+        }
+        return false;
+    }
+
+    bytes32 constant HIGHEST_BIT_DE_BRUIJN_TABLE = 0x0009010a0d15021d0b0e10121619031e080c141c0f111807131b17061a05041f;
+    uint256 constant HIGHEST_BIT_DE_BRUIJN_SEQUENCE = 130329821;
+    function bitLen(uint256 v)
+        private
+        pure
+        returns (uint256 r)
+    {
+        unchecked {
+            assembly {
+                let f := shl(7, gt(v, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF))
+                r := or(r, f)
+                v := shr(f, v)
+
+                f := shl(6, gt(v, 0xFFFFFFFFFFFFFFFF))
+                r := or(r, f)
+                v := shr(f, v)
+
+                f := shl(5, gt(v, 0xFFFFFFFF))
+                r := or(r, f)
+                v := shr(f, v)
+
+                v := or(v, shr(1, v))
+                v := or(v, shr(2, v))
+                v := or(v, shr(4, v))
+                v := or(v, shr(8, v))
+                v := or(v, shr(16, v))
+            }
+            uint256 index = uint32(v * HIGHEST_BIT_DE_BRUIJN_SEQUENCE) >> 27;
+            assembly {
+                r := add(r, byte(index, HIGHEST_BIT_DE_BRUIJN_TABLE))
+            }
+        }
+    }
+
+    bytes32 constant LOWEST_BIT_DE_BRUIJN_TABLE = 0x00011c021d0e18031e16140f191104081f1b0d17151310071a0c12060b050a09;
+    uint256 constant LOWEST_BIT_DE_BRUIJN_SEQUENCE = 125613361;
+    function trailingZeros(uint256 v)
+        private
+        pure
+        returns (uint256 r)
+    {
+        unchecked {
+            if (v & 0xffffffffffffffffffffffffffffffff == 0) {
+                r = 128;
+                v >>= 128;
+            }
+            if (v & 0xffffffffffffffff == 0) {
+                r += 64;
+                v >>= 64;
+            }
+            if (v & 0xffffffff == 0) {
+                r += 32;
+                v >>= 32;
+            }
+            int256 negV = -int256(v);
+            uint256 index = uint32((v & uint256(negV)) * LOWEST_BIT_DE_BRUIJN_SEQUENCE) >> 27;
+            assembly {
+                r := add(r, byte(index, LOWEST_BIT_DE_BRUIJN_TABLE))
+            }
+        }
+    }
+
+    function jacobi(uint256 d, uint256 n)
+        internal
+        pure
+        returns (int256 j)
+    {
+        assembly {
+            d := mod(d, n)
+            j := 1
+            let r := 0
+            for {} iszero(iszero(d)) {} {
+                for {} iszero(and(d, 1)) {} {
+                    d := shr(1, d)
+                    r := and(n, 7)
+                    if or(eq(r, 3), eq(r, 5)) {
+                        j := sub(0, j)
+                    }
+                }
+                r := n
+                n := d
+                d := r
+                if and(eq(and(d, 3), 3), eq(and(n, 3), 3)) {
+                    j := sub(0, j)
+                }
+                d := mod(d, n)
+            }
+            if iszero(eq(n, 1)) {
+                j := 0
+            }
+        }
+    }
+
     function pocklington(uint256 n, PocklingtonStep[] memory certificate) 
         internal 
         view 
+        returns (bool)
     {
-        if (n & 1 == 0) {
-            revert EvenNumber(n);
+        if (n < 512) {
+            return _checkSmallPrimes(n);
         }
+
         uint256 numSteps = certificate.length;
         if (numSteps == 0) {
             if (n > 512) {
-                revert TooBigForBaseCase(n);
+                return false;
             }
             if ((1 << (n >> 1)) & PRIMES_BIT_MASK == 0) {
-                revert NotPrime(n);
+                return false;
             }
-            return;
+            return true;
         }
 
         if (n - 1 != certificate[0].F * certificate[0].R) {
-            revert InvalidFactorization(
-                n - 1, 
-                certificate[0].F * certificate[0].R
-            );
+            return false;
         }
 
         assembly {
@@ -95,10 +269,10 @@ library LibPrime {
             uint256 F = step.F;
             uint256 R = step.R;
             if (R >= F) {
-                revert InvalidFR(F, R);
+                return false;
             }
             if (!coprime(F, R)) {
-                revert NotCoprime(F, R);
+                return false;
             }
 
             uint256 FR;
@@ -120,47 +294,47 @@ library LibPrime {
                     prod *= p ** a;
                 }
 
-                if (expMod(b, FR, n) != 1) {
-                    revert PocklingtonCheck1Failed(n, b);
+                if (_pocklingtonExpMod(b, FR, n) != 1) {
+                    return false;
                 }
                 uint256 exponent;
                 assembly {
                     exponent := div(FR, p)
                 }
-                if (!coprime(n, expMod(b, exponent, n) - 1)) {
-                    revert PocklingtonCheck2Failed(n, b, p);
+                if (!coprime(n, _pocklingtonExpMod(b, exponent, n) - 1)) {
+                    return false;
                 }
 
-                if (p == 2) {
-                    continue;
-                }
-                if (p & 1 == 0) {
-                    revert EvenNumber(p);
-                }
                 if (p < 512) {
+                    if (p == 2) {
+                        continue;
+                    } else if (p & 1 == 0) {
+                        return false;
+                    }
                     if ((1 << (p >> 1)) & PRIMES_BIT_MASK == 0) {
-                        revert NotPrime(p);
+                        return false;
                     } else {
                         continue;
                     }
                 }
+                if (p & 1 == 0) {
+                    return false;
+                }
                 unchecked { k++; }
                 if (p - 1 != certificate[k].F * certificate[k].R) {
-                    revert InvalidFactorization(
-                        p - 1, 
-                        certificate[k].F * certificate[k].R
-                    );
+                    return false;
                 }
             }
 
             if (prod != F) {
-                revert InvalidFactorization(F, prod);
+                return false;
             }
         }
         assembly {
             // Update free memory pointer
             mstore(0x40, add(mload(0x40), 0xc0))
         }
+        return true;
     }
 
     function coprime(uint256 a, uint256 b)
@@ -183,11 +357,16 @@ library LibPrime {
     // Use Miller-Rabin test to probabilistically check whether n>3 is prime.
     // Based on Dankrad Feist's implementation:
     // https://github.com/dankrad/rsa-bounty/blob/master/contract/rsa_bounty.sol
-    function millerRabin(uint256 n) internal view {
+    function millerRabin(uint256 n) 
+        internal 
+        view
+        returns (bool) 
+    {
         unchecked {
-            if (n & 1 == 0) {
-                revert EvenNumber(n);
+            if (n < 512) {
+                return _checkSmallPrimes(n);
             }
+
             uint256 d = n - 1;
             uint256 r = 0;
 
@@ -239,17 +418,72 @@ library LibPrime {
                     }
                 }
                 if (!check_passed) {
-                    revert MillerRabinCheckFailed();
+                    return false;
                 }
             }
             assembly {
                 // Update free memory pointer
                 mstore(0x40, add(memPtr, 0xc0))
             }
+            return true;
         }
     }
 
-    function expMod(uint256 base, uint256 exponent, uint256 modulus)
+    function _millerRabinBase2(uint256 n)
+        private
+        view
+        returns (bool)
+    {
+        unchecked {
+            if (n == 2) {
+                return true;
+            }
+
+            uint256 d = n - 1;
+            uint256 r = 0;
+
+            assembly {
+                for {} iszero(and(d, 1)) {} {
+                    d := shr(1, d)
+                    r := add(r, 1)
+                }
+            }
+
+            uint256 x;
+            assembly { 
+                // Get free memory pointer
+                let p := mload(0x40)
+                // Store parameters for the Expmod (0x05) precompile
+                mstore(p, 0x20)             // Length of Base
+                mstore(add(p, 0x20), 0x20)  // Length of Exponent
+                mstore(add(p, 0x40), 0x20)  // Length of Modulus
+                mstore(add(p, 0x60), 2)     // Base
+                mstore(add(p, 0x80), d)     // Exponent
+                mstore(add(p, 0xa0), n)     // Modulus
+                // Call 0x05 (EXPMOD) precompile
+                if iszero(staticcall(gas(), 0x05, p, 0xc0, 0, 0x20)) {
+                    revert(0, 0)
+                }
+                x := mload(0)
+                // Update free memory pointer
+                mstore(0x40, add(p, 0xc0))
+            }
+
+            if (x == 1 || x == n - 1) {
+                return true;
+            }
+
+            for (uint256 j = 1; j != r; ++j) {
+                x = mulmod(x, x, n);
+                if (x == n - 1) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    function _pocklingtonExpMod(uint256 base, uint256 exponent, uint256 modulus)
         private
         view
         returns (uint256 result)
@@ -268,5 +502,18 @@ library LibPrime {
             }
             result := mload(0)
         }
+    }
+
+    function _checkSmallPrimes(uint256 n)
+        private
+        pure
+        returns (bool)
+    {
+        if (n == 2) {
+            return true;
+        } else if (n & 1 == 0) {
+            return false;
+        }
+        return (1 << (n >> 1)) & PRIMES_BIT_MASK != 0;        
     }
 }
