@@ -3,85 +3,77 @@ pragma solidity ^0.8;
 library LibBigMath {
     using LibBigMath for *;
 
-    error Overflow(BigNumber2048 a, BigNumber2048 b);
-    error Underflow(BigNumber2048 a, BigNumber2048 b);
+    error Overflow(uint256[8] a, uint256[8] b);
+    error Underflow(uint256[8] a, uint256[8] b);
 
-    struct BigNumber2048 {
-        uint256[8] words;
-    }
-    
     function toBigNumber2048(uint256 x)
         internal 
         pure 
-        returns (BigNumber2048 memory bn) 
+        returns (uint256[8] memory bn) 
     {
-        bn = BigNumber2048([uint256(0), 0, 0, 0, 0, 0, 0, x]);
+        bn[7] = x;
     }
 
-    function add(BigNumber2048 memory a, BigNumber2048 memory b) 
+    function add(uint256[8] memory a, uint256[8] memory b) 
         internal 
         pure
-        returns (BigNumber2048 memory c)
+        returns (uint256[8] memory c)
     {
         uint256 carry;
         assembly {
-            let aPtr := mload(a)
-            let bPtr := mload(b)
-            let cPtr := mload(c)
-
-            let aWord := mload(add(aPtr, 0xe0))
-            let bWord := mload(add(bPtr, 0xe0))
+            let aWord := mload(add(a, 0xe0))
+            let bWord := mload(add(b, 0xe0))
             let sum := add(aWord, bWord)
-            mstore(add(cPtr, 0xe0), sum)
+            mstore(add(c, 0xe0), sum)
             carry := lt(sum, aWord)
 
-            aWord := mload(add(aPtr, 0xc0))
-            bWord := mload(add(bPtr, 0xc0))
+            aWord := mload(add(a, 0xc0))
+            bWord := mload(add(b, 0xc0))
             sum := add(aWord, bWord)
             let cWord := add(sum, carry)
-            mstore(add(cPtr, 0xc0), cWord)
+            mstore(add(c, 0xc0), cWord)
             carry := or(lt(sum, aWord), lt(cWord, carry))
 
-            aWord := mload(add(aPtr, 0xa0))
-            bWord := mload(add(bPtr, 0xa0))
+            aWord := mload(add(a, 0xa0))
+            bWord := mload(add(b, 0xa0))
             sum := add(aWord, bWord)
             cWord := add(sum, carry)
-            mstore(add(cPtr, 0xa0), cWord)
+            mstore(add(c, 0xa0), cWord)
             carry := or(lt(sum, aWord), lt(cWord, sum))
 
-            aWord := mload(add(aPtr, 0x80))
-            bWord := mload(add(bPtr, 0x80))
+            aWord := mload(add(a, 0x80))
+            bWord := mload(add(b, 0x80))
             sum := add(aWord, bWord)
             cWord := add(sum, carry)
-            mstore(add(cPtr, 0x80), cWord)
+            mstore(add(c, 0x80), cWord)
             carry := or(lt(sum, aWord), lt(cWord, sum))
 
-            aWord := mload(add(aPtr, 0x60))
-            bWord := mload(add(bPtr, 0x60))
+            aWord := mload(add(a, 0x60))
+            bWord := mload(add(b, 0x60))
             sum := add(aWord, bWord)
             cWord := add(sum, carry)
-            mstore(add(cPtr, 0x60), cWord)
+            mstore(add(c, 0x60), cWord)
             carry := or(lt(sum, aWord), lt(cWord, sum))
 
-            aWord := mload(add(aPtr, 0x40))
-            bWord := mload(add(bPtr, 0x40))
+            aWord := mload(add(a, 0x40))
+            bWord := mload(add(b, 0x40))
             sum := add(aWord, bWord)
             cWord := add(sum, carry)
-            mstore(add(cPtr, 0x40), cWord)
+            mstore(add(c, 0x40), cWord)
             carry := or(lt(sum, aWord), lt(cWord, sum))
 
-            aWord := mload(add(aPtr, 0x20))
-            bWord := mload(add(bPtr, 0x20))
+            aWord := mload(add(a, 0x20))
+            bWord := mload(add(b, 0x20))
             sum := add(aWord, bWord)
             cWord := add(sum, carry)
-            mstore(add(cPtr, 0x20), cWord)
+            mstore(add(c, 0x20), cWord)
             carry := or(lt(sum, aWord), lt(cWord, sum))
 
-            aWord := mload(aPtr)
-            bWord := mload(bPtr)
+            aWord := mload(a)
+            bWord := mload(b)
             sum := add(aWord, bWord)
             cWord := add(sum, carry)
-            mstore(cPtr, cWord)
+            mstore(c, cWord)
             carry := or(lt(sum, aWord), lt(cWord, sum))
         }
         if (carry != 0) {
@@ -89,63 +81,59 @@ library LibBigMath {
         }
     }
 
-    function sub(BigNumber2048 memory a, BigNumber2048 memory b) 
+    function sub(uint256[8] memory a, uint256[8] memory b) 
         internal 
         pure
-        returns (BigNumber2048 memory c)
+        returns (uint256[8] memory c)
     {
         uint256 carry;
         assembly {
-            let aPtr := mload(a)
-            let bPtr := mload(b)
-            let cPtr := mload(c)
-
-            let aWord := mload(add(aPtr, 0xe0))
-            let bWord := mload(add(bPtr, 0xe0))
+            let aWord := mload(add(a, 0xe0))
+            let bWord := mload(add(b, 0xe0))
             let diff := sub(aWord, bWord)
-            mstore(add(cPtr, 0xe0), diff)
+            mstore(add(c, 0xe0), diff)
             carry := lt(aWord, bWord)
 
-            aWord := mload(add(aPtr, 0xc0))
-            bWord := mload(add(bPtr, 0xc0))
+            aWord := mload(add(a, 0xc0))
+            bWord := mload(add(b, 0xc0))
             diff := sub(aWord, bWord)
-            mstore(add(cPtr, 0xc0), sub(diff, carry))
+            mstore(add(c, 0xc0), sub(diff, carry))
             carry := or(lt(aWord, bWord), lt(diff, carry))
 
-            aWord := mload(add(aPtr, 0xa0))
-            bWord := mload(add(bPtr, 0xa0))
+            aWord := mload(add(a, 0xa0))
+            bWord := mload(add(b, 0xa0))
             diff := sub(aWord, bWord)
-            mstore(add(cPtr, 0xa0), sub(diff, carry))
+            mstore(add(c, 0xa0), sub(diff, carry))
             carry := or(lt(aWord, bWord), lt(diff, carry))
 
-            aWord := mload(add(aPtr, 0x80))
-            bWord := mload(add(bPtr, 0x80))
+            aWord := mload(add(a, 0x80))
+            bWord := mload(add(b, 0x80))
             diff := sub(aWord, bWord)
-            mstore(add(cPtr, 0x80), sub(diff, carry))
+            mstore(add(c, 0x80), sub(diff, carry))
             carry := or(lt(aWord, bWord), lt(diff, carry))
 
-            aWord := mload(add(aPtr, 0x60))
-            bWord := mload(add(bPtr, 0x60))
+            aWord := mload(add(a, 0x60))
+            bWord := mload(add(b, 0x60))
             diff := sub(aWord, bWord)
-            mstore(add(cPtr, 0x60), sub(diff, carry))
+            mstore(add(c, 0x60), sub(diff, carry))
             carry := or(lt(aWord, bWord), lt(diff, carry))
 
-            aWord := mload(add(aPtr, 0x40))
-            bWord := mload(add(bPtr, 0x40))
+            aWord := mload(add(a, 0x40))
+            bWord := mload(add(b, 0x40))
             diff := sub(aWord, bWord)
-            mstore(add(cPtr, 0x40), sub(diff, carry))
+            mstore(add(c, 0x40), sub(diff, carry))
             carry := or(lt(aWord, bWord), lt(diff, carry))
 
-            aWord := mload(add(aPtr, 0x20))
-            bWord := mload(add(bPtr, 0x20))
+            aWord := mload(add(a, 0x20))
+            bWord := mload(add(b, 0x20))
             diff := sub(aWord, bWord)
-            mstore(add(cPtr, 0x20), sub(diff, carry))
+            mstore(add(c, 0x20), sub(diff, carry))
             carry := or(lt(aWord, bWord), lt(diff, carry))
 
-            aWord := mload(aPtr)
-            bWord := mload(bPtr)
+            aWord := mload(a)
+            bWord := mload(b)
             diff := sub(aWord, bWord)
-            mstore(cPtr, sub(diff, carry))
+            mstore(c, sub(diff, carry))
             carry := or(lt(aWord, bWord), lt(diff, carry))
         }
         if (carry != 0) {
@@ -153,23 +141,23 @@ library LibBigMath {
         }
     }
 
-    function eq(BigNumber2048 memory a, BigNumber2048 memory b)
+    function eq(uint256[8] memory a, uint256[8] memory b)
         internal
         pure
         returns (bool)
     {
         return
-            a.words[0] == b.words[0] &&
-            a.words[1] == b.words[1] &&
-            a.words[2] == b.words[2] &&
-            a.words[3] == b.words[3] &&
-            a.words[4] == b.words[4] &&
-            a.words[5] == b.words[5] &&
-            a.words[6] == b.words[6] &&
-            a.words[7] == b.words[7];
+            a[0] == b[0] &&
+            a[1] == b[1] &&
+            a[2] == b[2] &&
+            a[3] == b[3] &&
+            a[4] == b[4] &&
+            a[5] == b[5] &&
+            a[6] == b[6] &&
+            a[7] == b[7];
     }
 
-    function gt(BigNumber2048 memory a, BigNumber2048 memory b)
+    function gt(uint256[8] memory a, uint256[8] memory b)
         internal
         pure
         returns (bool)
@@ -177,7 +165,7 @@ library LibBigMath {
         return _gt(a, b, false);
     }
 
-    function gte(BigNumber2048 memory a, BigNumber2048 memory b)
+    function gte(uint256[8] memory a, uint256[8] memory b)
         internal
         pure
         returns (bool)
@@ -186,56 +174,56 @@ library LibBigMath {
     }
 
     function _gt(
-        BigNumber2048 memory a, 
-        BigNumber2048 memory b, 
+        uint256[8] memory a, 
+        uint256[8] memory b, 
         bool trueIfEqual
     )
         private
         pure
         returns (bool)
     {
-        if (a.words[0] < b.words[0]) {
+        if (a[0] < b[0]) {
             return false;
-        } else if (a.words[0] > b.words[0]) {
+        } else if (a[0] > b[0]) {
             return true;
         }
-        if (a.words[1] < b.words[1]) {
+        if (a[1] < b[1]) {
             return false;
-        } else if (a.words[1] > b.words[1]) {
+        } else if (a[1] > b[1]) {
             return true;
         }
-        if (a.words[2] < b.words[2]) {
+        if (a[2] < b[2]) {
             return false;
-        } else if (a.words[2] > b.words[2]) {
+        } else if (a[2] > b[2]) {
             return true;
         }
-        if (a.words[3] < b.words[3]) {
+        if (a[3] < b[3]) {
             return false;
-        } else if (a.words[3] > b.words[3]) {
+        } else if (a[3] > b[3]) {
             return true;
         }
-        if (a.words[4] < b.words[4]) {
+        if (a[4] < b[4]) {
             return false;
-        } else if (a.words[4] > b.words[4]) {
+        } else if (a[4] > b[4]) {
             return true;
         }
-        if (a.words[5] < b.words[5]) {
+        if (a[5] < b[5]) {
             return false;
-        } else if (a.words[5] > b.words[5]) {
+        } else if (a[5] > b[5]) {
             return true;
         }
-        if (a.words[6] < b.words[6]) {
+        if (a[6] < b[6]) {
             return false;
-        } else if (a.words[6] > b.words[6]) {
+        } else if (a[6] > b[6]) {
             return true;
         }
-        if (a.words[7] < b.words[7]) {
+        if (a[7] < b[7]) {
             return false;
         }
-        return trueIfEqual || a.words[7] > b.words[7];
+        return trueIfEqual || a[7] > b[7];
     }
 
-    function lt(BigNumber2048 memory a, BigNumber2048 memory b)
+    function lt(uint256[8] memory a, uint256[8] memory b)
         internal
         pure
         returns (bool)
@@ -243,7 +231,7 @@ library LibBigMath {
         return _lt(a, b, false);
     }
 
-    function lte(BigNumber2048 memory a, BigNumber2048 memory b)
+    function lte(uint256[8] memory a, uint256[8] memory b)
         internal
         pure
         returns (bool)
@@ -252,70 +240,70 @@ library LibBigMath {
     }
 
     function _lt(
-        BigNumber2048 memory a, 
-        BigNumber2048 memory b, 
+        uint256[8] memory a, 
+        uint256[8] memory b, 
         bool trueIfEqual
     )
         private
         pure
         returns (bool)
     {
-        if (a.words[0] > b.words[0]) {
+        if (a[0] > b[0]) {
             return false;
-        } else if (a.words[0] < b.words[0]) {
+        } else if (a[0] < b[0]) {
             return true;
         }
-        if (a.words[1] > b.words[1]) {
+        if (a[1] > b[1]) {
             return false;
-        } else if (a.words[1] < b.words[1]) {
+        } else if (a[1] < b[1]) {
             return true;
         }
-        if (a.words[2] > b.words[2]) {
+        if (a[2] > b[2]) {
             return false;
-        } else if (a.words[2] < b.words[2]) {
+        } else if (a[2] < b[2]) {
             return true;
         }
-        if (a.words[3] > b.words[3]) {
+        if (a[3] > b[3]) {
             return false;
-        } else if (a.words[3] < b.words[3]) {
+        } else if (a[3] < b[3]) {
             return true;
         }
-        if (a.words[4] > b.words[4]) {
+        if (a[4] > b[4]) {
             return false;
-        } else if (a.words[4] < b.words[4]) {
+        } else if (a[4] < b[4]) {
             return true;
         }
-        if (a.words[5] > b.words[5]) {
+        if (a[5] > b[5]) {
             return false;
-        } else if (a.words[5] < b.words[5]) {
+        } else if (a[5] < b[5]) {
             return true;
         }
-        if (a.words[6] > b.words[6]) {
+        if (a[6] > b[6]) {
             return false;
-        } else if (a.words[6] < b.words[6]) {
+        } else if (a[6] < b[6]) {
             return true;
         }
-        if (a.words[7] > b.words[7]) {
+        if (a[7] > b[7]) {
             return false;
         } 
-        return trueIfEqual || a.words[7] < b.words[7];
+        return trueIfEqual || a[7] < b[7];
     }
 
-    function mulMod(BigNumber2048 memory a, BigNumber2048 memory b, BigNumber2048 memory modulus)
+    function mulMod(uint256[8] memory a, uint256[8] memory b, uint256[8] memory modulus)
         internal
         view
-        returns (BigNumber2048 memory result)
+        returns (uint256[8] memory result)
     {
-        BigNumber2048 memory sumSquared = a.add(b).expMod(2, modulus);
-        BigNumber2048 memory differenceSquared = a.subMod(b, modulus).expMod(2, modulus);
+        uint256[8] memory sumSquared = a.add(b).expMod(2, modulus);
+        uint256[8] memory differenceSquared = a.subMod(b, modulus).expMod(2, modulus);
         // Returns (a+b)^2 - (a-b)^2 = 4ab
         return sumSquared.subMod(differenceSquared, modulus);
     }
 
-    function addMod(BigNumber2048 memory a, BigNumber2048 memory b, BigNumber2048 memory modulus)
+    function addMod(uint256[8] memory a, uint256[8] memory b, uint256[8] memory modulus)
         internal
         pure
-        returns (BigNumber2048 memory result)
+        returns (uint256[8] memory result)
     {
         result = a.add(b);
         if (result.gte(modulus)) {
@@ -323,10 +311,10 @@ library LibBigMath {
         }
     }
 
-    function subMod(BigNumber2048 memory a, BigNumber2048 memory b, BigNumber2048 memory modulus)
+    function subMod(uint256[8] memory a, uint256[8] memory b, uint256[8] memory modulus)
         internal
         pure
-        returns (BigNumber2048 memory result)
+        returns (uint256[8] memory result)
     {
         if (a.gte(b)) {
             return a.sub(b);
@@ -335,10 +323,10 @@ library LibBigMath {
         }
     }
 
-    function expMod(BigNumber2048 memory base, uint256 exponent, BigNumber2048 memory modulus)
+    function expMod(uint256[8] memory base, uint256 exponent, uint256[8] memory modulus)
         internal
         view
-        returns (BigNumber2048 memory result)
+        returns (uint256[8] memory result)
     {
         if (exponent == 0) {
             return uint256(1).toBigNumber2048();
@@ -354,17 +342,17 @@ library LibBigMath {
             mstore(add(p, 0x40), 0x100)    // Length of modulus (8 * 32 = 256 bytes)
 
             // Use Identity (0x04) precompile to memcpy the base
-            if iszero(staticcall(gas(), 0x04, mload(base), 0x100, add(p, 0x60), 0x100)) {
+            if iszero(staticcall(gas(), 0x04, base, 0x100, add(p, 0x60), 0x100)) {
                 revert(0, 0)
             }
             // Store the exponent
             mstore(add(p, 0x160), exponent)
             // Use Identity (0x04) precompile to memcpy the modulus
-            if iszero(staticcall(gas(), 0x04, mload(modulus), 0x100, add(p, 0x180), 0x100)) {
+            if iszero(staticcall(gas(), 0x04, modulus, 0x100, add(p, 0x180), 0x100)) {
                 revert(0, 0)
             }
             // Call 0x05 (EXPMOD) precompile
-            if iszero(staticcall(gas(), 0x05, p, 0x280, mload(result), 0x100)) {
+            if iszero(staticcall(gas(), 0x05, p, 0x280, result, 0x100)) {
                 revert(0, 0)
             }
 
