@@ -1,10 +1,10 @@
 pragma solidity ^0.8;
 
-import './LibBigMath.sol';
+import './LibUint2048.sol';
 import './LibPrime.sol';
 
 contract HomomorphicTimeLockPuzzle {
-    using LibBigMath for *;
+    using LibUint2048 for *;
 
     struct PublicParameters {
         uint256[8] N;

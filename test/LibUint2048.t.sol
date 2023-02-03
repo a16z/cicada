@@ -1,10 +1,10 @@
 pragma solidity ^0.8;
 
 import 'forge-std/Test.sol';
-import '../src/LibBigMath.sol';
+import '../src/LibUint2048.sol';
 
-contract LibBigMathTest is Test {
-    using LibBigMath for *;
+contract LibUint2048Test is Test {
+    using LibUint2048 for *;
 
     function testReferenceAdd(uint256[8] memory a, uint256[8] memory b)
         public

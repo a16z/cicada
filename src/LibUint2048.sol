@@ -1,7 +1,7 @@
 pragma solidity ^0.8;
 
-library LibBigMath {
-    using LibBigMath for *;
+library LibUint2048 {
+    using LibUint2048 for *;
 
     error Overflow(uint256[8] a, uint256[8] b);
     error Underflow(uint256[8] a, uint256[8] b);
