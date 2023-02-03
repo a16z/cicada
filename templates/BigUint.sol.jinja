@@ -20,6 +20,29 @@ library LibUint{{ num_words * 256 }} {
         returns (uint256[{{ num_words }}] memory c)
     {
         uint256 carry;
+        (c, carry) = _add(a, b);
+        if (carry != 0) {
+            revert Overflow(a, b);
+        }
+    }
+
+    function sub(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b) 
+        internal 
+        pure
+        returns (uint256[{{ num_words }}] memory c)
+    {
+        uint256 carry;
+        (c, carry) = _sub(a, b);
+        if (carry != 0) {
+            revert Underflow(a, b);
+        }
+    }
+
+    function _add(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b) 
+        private 
+        pure
+        returns (uint256[{{ num_words }}] memory c, uint256 carry)
+    {
         assembly {
             let aWord := mload(add(a, {{ '0x%x' % ((num_words - 1) * 32) }}))
             let bWord := mload(add(b, {{ '0x%x' % ((num_words - 1) * 32) }}))
@@ -40,17 +63,13 @@ library LibUint{{ num_words * 256 }} {
             carry := or(lt(sum, aWord), lt(cWord, sum))
             {% endfor %}
         }
-        if (carry != 0) {
-            revert Overflow(a, b);
-        }
     }
 
-    function sub(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b) 
-        internal 
+    function _sub(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b) 
+        private 
         pure
-        returns (uint256[{{ num_words }}] memory c)
+        returns (uint256[{{ num_words }}] memory c, uint256 carry)
     {
-        uint256 carry;
         assembly {
             let aWord := mload(add(a, {{ '0x%x' % ((num_words - 1) * 32) }}))
             let bWord := mload(add(b, {{ '0x%x' % ((num_words - 1) * 32) }}))
@@ -65,9 +84,6 @@ library LibUint{{ num_words * 256 }} {
             mstore({% if i == 0 %}c{% else %}add(c, {{ '0x%x' % (i * 32) }}){% endif %}, sub(diff, carry))
             carry := or(lt(aWord, bWord), lt(diff, carry))
             {% endfor %}
-        }
-        if (carry != 0) {
-            revert Underflow(a, b);
         }
     }
 
@@ -164,7 +180,7 @@ library LibUint{{ num_words * 256 }} {
         view
         returns (uint256[{{ num_words }}] memory result)
     {
-        uint256[{{ num_words }}] memory sumSquared = a.add(b).expMod(2, modulus);
+        uint256[{{ num_words }}] memory sumSquared = a.addMod(b).expMod(2, modulus);
         uint256[{{ num_words }}] memory differenceSquared = a.subMod(b, modulus).expMod(2, modulus);
         // Returns (a+b)^2 - (a-b)^2 = 4ab
         return sumSquared.subMod(differenceSquared, modulus);
@@ -175,9 +191,10 @@ library LibUint{{ num_words * 256 }} {
         pure
         returns (uint256[{{ num_words }}] memory result)
     {
-        result = a.add(b);
-        if (result.gte(modulus)) {
-            result = result.sub(modulus);
+        uint256 carry;
+        (result, carry) = _add(a, b);
+        if (carry == 1 || result.gte(modulus)) {
+            (result, ) = _sub(result, modulus);
         }
     }
 

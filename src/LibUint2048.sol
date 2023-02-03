@@ -20,6 +20,29 @@ library LibUint2048 {
         returns (uint256[8] memory c)
     {
         uint256 carry;
+        (c, carry) = _add(a, b);
+        if (carry != 0) {
+            revert Overflow(a, b);
+        }
+    }
+
+    function sub(uint256[8] memory a, uint256[8] memory b) 
+        internal 
+        pure
+        returns (uint256[8] memory c)
+    {
+        uint256 carry;
+        (c, carry) = _sub(a, b);
+        if (carry != 0) {
+            revert Underflow(a, b);
+        }
+    }
+
+    function _add(uint256[8] memory a, uint256[8] memory b) 
+        private 
+        pure
+        returns (uint256[8] memory c, uint256 carry)
+    {
         assembly {
             let aWord := mload(add(a, 0xe0))
             let bWord := mload(add(b, 0xe0))
@@ -76,17 +99,13 @@ library LibUint2048 {
             mstore(c, cWord)
             carry := or(lt(sum, aWord), lt(cWord, sum))
         }
-        if (carry != 0) {
-            revert Overflow(a, b);
-        }
     }
 
-    function sub(uint256[8] memory a, uint256[8] memory b) 
-        internal 
+    function _sub(uint256[8] memory a, uint256[8] memory b) 
+        private 
         pure
-        returns (uint256[8] memory c)
+        returns (uint256[8] memory c, uint256 carry)
     {
-        uint256 carry;
         assembly {
             let aWord := mload(add(a, 0xe0))
             let bWord := mload(add(b, 0xe0))
@@ -135,9 +154,6 @@ library LibUint2048 {
             diff := sub(aWord, bWord)
             mstore(c, sub(diff, carry))
             carry := or(lt(aWord, bWord), lt(diff, carry))
-        }
-        if (carry != 0) {
-            revert Underflow(a, b);
         }
     }
 
@@ -294,7 +310,7 @@ library LibUint2048 {
         view
         returns (uint256[8] memory result)
     {
-        uint256[8] memory sumSquared = a.add(b).expMod(2, modulus);
+        uint256[8] memory sumSquared = a.addMod(b, modulus).expMod(2, modulus);
         uint256[8] memory differenceSquared = a.subMod(b, modulus).expMod(2, modulus);
         // Returns (a+b)^2 - (a-b)^2 = 4ab
         return sumSquared.subMod(differenceSquared, modulus);
@@ -305,9 +321,10 @@ library LibUint2048 {
         pure
         returns (uint256[8] memory result)
     {
-        result = a.add(b);
-        if (result.gte(modulus)) {
-            result = result.sub(modulus);
+        uint256 carry;
+        (result, carry)  = _add(a, b);
+        if (carry == 1 || result.gte(modulus)) {
+            (result, ) = _sub(result, modulus);
         }
     }
 
