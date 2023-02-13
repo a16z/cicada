@@ -6,7 +6,7 @@ library LibUint2048 {
     error Overflow(uint256[8] a, uint256[8] b);
     error Underflow(uint256[8] a, uint256[8] b);
 
-    function toBigNumber2048(uint256 x)
+    function toUint2048(uint256 x)
         internal 
         pure 
         returns (uint256[8] memory bn) 
@@ -322,7 +322,7 @@ library LibUint2048 {
         returns (uint256[8] memory result)
     {
         uint256 carry;
-        (result, carry)  = _add(a, b);
+        (result, carry) = _add(a, b);
         if (carry == 1 || result.gte(modulus)) {
             (result, ) = _sub(result, modulus);
         }
@@ -346,7 +346,7 @@ library LibUint2048 {
         returns (uint256[8] memory result)
     {
         if (exponent == 0) {
-            return uint256(1).toBigNumber2048();
+            return uint256(1).toUint2048();
         }
 
         assembly {
@@ -377,4 +377,85 @@ library LibUint2048 {
             mstore(0x40, add(p, 0x280))
         }
     }
+
+    function expMod(
+        uint256[8] memory base, 
+        uint256[8] memory exponent, 
+        uint256[8] memory modulus
+    )
+        internal
+        view
+        returns (uint256[8] memory result)
+    {
+        assembly {
+            // Get free memory pointer
+            let p := mload(0x40)
+
+            // Store parameters for the Expmod (0x05) precompile
+            mstore(p, 0x100)               // Length of base (8 * 32 = 256 bytes)
+            mstore(add(p, 0x20), 0x100)    // Length of exponent (8 * 32 = 256 bytes)
+            mstore(add(p, 0x40), 0x100)    // Length of modulus (8 * 32 = 512 bytes)
+
+            // Use Identity (0x04) precompile to memcpy the base
+            if iszero(staticcall(gas(), 0x04, base, 0x100, add(p, 0x60), 0x100)) {
+                revert(0, 0)
+            }
+            // Use Identity (0x04) precompile to memcpy the exponent
+            if iszero(staticcall(gas(), 0x04, exponent, 0x100, add(p, 0x160), 0x100)) {
+                revert(0, 0)
+            }
+            // Use Identity (0x04) precompile to memcpy the modulus
+            if iszero(staticcall(gas(), 0x04, modulus, 0x100, add(p, 0x260), 0x100)) {
+                revert(0, 0)
+            }
+            // Call 0x05 (EXPMOD) precompile
+            if iszero(staticcall(gas(), 0x05, p, 0x360, result, 0x100)) {
+                revert(0, 0)
+            }
+
+            // Update free memory pointer
+            mstore(0x40, add(p, 0x560))
+        }
+    }
+
+    function expMod(
+        uint256[8] memory base, 
+        uint256[8] memory exponent, 
+        uint256[16] memory modulus
+    )
+        internal
+        view
+        returns (uint256[16] memory result)
+    {
+        assembly {
+            // Get free memory pointer
+            let p := mload(0x40)
+
+            // Store parameters for the Expmod (0x05) precompile
+            mstore(p, 0x100)               // Length of base (8 * 32 = 256 bytes)
+            mstore(add(p, 0x20), 0x100)    // Length of exponent (8 * 32 = 256 bytes)
+            mstore(add(p, 0x40), 0x200)    // Length of modulus (16 * 32 = 512 bytes)
+
+            // Use Identity (0x04) precompile to memcpy the base
+            if iszero(staticcall(gas(), 0x04, base, 0x100, add(p, 0x60), 0x100)) {
+                revert(0, 0)
+            }
+            // Use Identity (0x04) precompile to memcpy the exponent
+            if iszero(staticcall(gas(), 0x04, exponent, 0x100, add(p, 0x160), 0x100)) {
+                revert(0, 0)
+            }
+            // Use Identity (0x04) precompile to memcpy the modulus
+            if iszero(staticcall(gas(), 0x04, modulus, 0x200, add(p, 0x260), 0x200)) {
+                revert(0, 0)
+            }
+            // Call 0x05 (EXPMOD) precompile
+            if iszero(staticcall(gas(), 0x05, p, 0x460, result, 0x200)) {
+                revert(0, 0)
+            }
+
+            // Update free memory pointer
+            mstore(0x40, add(p, 0x660))
+        }
+    }
+
 }

@@ -180,7 +180,7 @@ library LibUint{{ num_words * 256 }} {
         view
         returns (uint256[{{ num_words }}] memory result)
     {
-        uint256[{{ num_words }}] memory sumSquared = a.addMod(b).expMod(2, modulus);
+        uint256[{{ num_words }}] memory sumSquared = a.addMod(b, modulus).expMod(2, modulus);
         uint256[{{ num_words }}] memory differenceSquared = a.subMod(b, modulus).expMod(2, modulus);
         // Returns (a+b)^2 - (a-b)^2 = 4ab
         return sumSquared.subMod(differenceSquared, modulus);

@@ -2,9 +2,40 @@ pragma solidity ^0.8;
 
 import 'forge-std/Test.sol';
 import '../src/LibUint2048.sol';
+import '../src/LibUint1024.jinja.sol';
 
 contract LibUint2048Test is Test {
     using LibUint2048 for *;
+    using LibUint1024 for *;
+
+    function testBigExpMod(
+        uint256[8] calldata base, 
+        // uint256[4] calldata exponent, 
+        // uint128 exponent,
+        uint256[8] calldata modulus
+    )
+        external
+    {
+        // vm.assume(exponent[0] > (1 << 255));
+        // vm.assume(exponent > (1 << 127));
+        uint gasBefore = gasleft();
+        base.expMod(uint256(1), modulus);
+        uint gasAfter = gasleft();
+        console.log(gasBefore - gasAfter);
+    }
+
+    function testBigMulMod(
+        uint256[4] calldata x, 
+        uint256[4] calldata y, 
+        uint256[4] calldata modulus
+    )
+        external
+    {
+        vm.assume(x.lt(modulus));
+        vm.assume(y.lt(modulus));
+        x.mulMod(y, modulus);
+        // base.expMod(uint256(exponent), modulus);
+    }
 
     function testReferenceAdd(uint256[8] memory a, uint256[8] memory b)
         public
@@ -234,9 +265,9 @@ contract LibUint2048Test is Test {
             }
         }
 
-        uint256[8] memory bigA = uint256(a).toBigNumber2048();
-        uint256[8] memory bigM = m.toBigNumber2048();
-        assertTrue(bigA.expMod(e, bigM).eq(expectedResult.toBigNumber2048()));
+        uint256[8] memory bigA = uint256(a).toUint2048();
+        uint256[8] memory bigM = m.toUint2048();
+        assertTrue(bigA.expMod(e, bigM).eq(expectedResult.toUint2048()));
     }
 
     function testMulModSmall(uint256 a, uint256 b, uint256 m)
@@ -244,12 +275,12 @@ contract LibUint2048Test is Test {
     {
         vm.assume(a < m && b < m);
         vm.assume(mulmod(a, b, m) <= type(uint256).max / 4);
-        uint256[8] memory bigA = a.toBigNumber2048();
-        uint256[8] memory bigB = b.toBigNumber2048();
-        uint256[8] memory bigM = m.toBigNumber2048();
+        uint256[8] memory bigA = a.toUint2048();
+        uint256[8] memory bigB = b.toUint2048();
+        uint256[8] memory bigM = m.toUint2048();
 
         uint256 expectedResult = (4 * mulmod(a, b, m)) % m;
-        assertTrue(bigA.mulMod(bigB, bigM).eq(expectedResult.toBigNumber2048()));
+        assertTrue(bigA.mulMod(bigB, bigM).eq(expectedResult.toUint2048()));
     }
 
     // ================================================================
