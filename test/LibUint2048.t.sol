@@ -33,8 +33,20 @@ contract LibUint2048Test is Test {
     {
         vm.assume(x.lt(modulus));
         vm.assume(y.lt(modulus));
-        x.mulMod(y, modulus);
-        // base.expMod(uint256(exponent), modulus);
+        uint256[4] memory result = x.mulMod(y, modulus);
+    }
+
+    function testBigMulMod2(
+        uint256[4] calldata x, 
+        uint256[4] calldata y, 
+        uint256[4] calldata modulus
+    )
+        external
+    {
+        vm.assume(x.lt(modulus));
+        vm.assume(y.lt(modulus));
+        uint256[4] memory result = x.mulMod2(y, modulus);
+        // assertTrue(result.mulMod2(4.toUint1024(), modulus).eq(x.mulMod(y, modulus)));
     }
 
     function testReferenceAdd(uint256[8] memory a, uint256[8] memory b)

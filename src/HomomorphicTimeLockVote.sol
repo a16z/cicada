@@ -64,27 +64,26 @@ contract HomomorphicTimeLockVote {
             }
         }
 
-        uint256[4] memory one = 1.toUint1024();
-        uint256[4] memory lhs = pp.g.expMod(PoV.t_0, pp.N).mulMod(one, pp.N);
-        uint256[4] memory rhs = PoV.a_0.mulMod(Z.u.expMod(PoV.c_0, pp.N), pp.N);
+        uint256[4] memory lhs = pp.g.expMod(PoV.t_0, pp.N);
+        uint256[4] memory rhs = PoV.a_0.mulMod2(Z.u.expMod(PoV.c_0, pp.N), pp.N);
         if (!lhs.eq(rhs)) {
             revert InvalidVote();
         }
 
-        lhs = pp.h.expMod(PoV.t_0, pp.N).mulMod(one, pp.N);
-        rhs = PoV.b_0.mulMod(Z.v.expMod(PoV.c_0, pp.N), pp.N);
+        lhs = pp.h.expMod(PoV.t_0, pp.N);
+        rhs = PoV.b_0.mulMod2(Z.v.expMod(PoV.c_0, pp.N), pp.N);
         if (!lhs.eq(rhs)) {
             revert InvalidVote();
         }
 
-        lhs = pp.g.expMod(PoV.t_1, pp.N).mulMod(one, pp.N);
-        rhs = PoV.a_1.mulMod(Z.u.expMod(PoV.c_1, pp.N), pp.N);
+        lhs = pp.g.expMod(PoV.t_1, pp.N);
+        rhs = PoV.a_1.mulMod2(Z.u.expMod(PoV.c_1, pp.N), pp.N);
         if (!lhs.eq(rhs)) {
             revert InvalidVote();
         }        
 
-        lhs = pp.h.expMod(PoV.t_1, pp.N).mulMod(one, pp.N);
-        rhs = PoV.b_1.mulMod(Z.v.mulMod(pp.yInv, pp.N).expMod(PoV.c_1, pp.N), pp.N);
+        lhs = pp.h.expMod(PoV.t_1, pp.N);
+        rhs = PoV.b_1.mulMod2(Z.v.mulMod2(pp.yInv, pp.N).expMod(PoV.c_1, pp.N), pp.N);
         if (!lhs.eq(rhs)) {
             // revert InvalidVote();
         }
