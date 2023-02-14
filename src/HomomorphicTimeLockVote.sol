@@ -83,9 +83,9 @@ contract HomomorphicTimeLockVote {
         }        
 
         lhs = pp.h.expMod(PoV.t_1, pp.N);
-        rhs = PoV.b_1.mulMod2(Z.v.mulMod2(pp.yInv, pp.N).expMod(PoV.c_1, pp.N), pp.N);
+        rhs = Z.v.mulMod2(pp.yInv, pp.N).expMod(PoV.c_1, pp.N).mulMod2(PoV.b_1, pp.N);
         if (!lhs.eq(rhs)) {
-            // revert InvalidVote();
+            revert InvalidVote();
         }
     }
 
