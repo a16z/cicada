@@ -367,29 +367,6 @@ library LibUint1024 {
         }
     }
 
-    function _mul512(uint256 a, uint256 b)
-        private
-        pure
-        returns (uint256 r1, uint256 r0)
-    {
-        assembly {
-            let mm := mulmod(a, b, MAX_UINT)
-            r0 := mul(a, b)
-            r1 := sub(sub(mm, r0), lt(mm, r0))
-        }
-    }
-
-    function _addWithCarry(uint256 a, uint256 b, uint256 carry)
-        private
-        pure
-        returns (uint256 result, uint256 updatedCarry)
-    {
-        assembly {
-            result := add(a, b)
-            updatedCarry := add(carry, lt(result, a))
-        }
-    }
-
     function mulMod(uint256[4] memory a, uint256[4] memory b, uint256[4] memory modulus)
         internal
         view
@@ -430,10 +407,6 @@ library LibUint1024 {
         view
         returns (uint256[4] memory result)
     {
-        if (exponent == 0) {
-            return uint256(1).toUint1024();
-        }
-
         assembly {
             // Get free memory pointer
             let p := mload(0x40)

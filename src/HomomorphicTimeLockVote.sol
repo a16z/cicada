@@ -37,12 +37,79 @@ contract HomomorphicTimeLockVote {
         uint256[4] t_1;
         uint256 c_1;
     }
+
+    struct Vote {
+        bytes32 parametersHash;
+        Puzzle tally;
+        uint64 numVotes;
+        uint64 startTime;
+        uint64 endTime;
+    }
     
     error InvalidProofOfExponentiation();
     error InvalidPuzzleSolution();
     error InvalidVote();
 
-    function verifyVoteValidity(
+    uint256 public nextVoteId = 1;
+    mapping(uint256 => Vote) votes;
+
+    function createVote(
+        PublicParameters memory pp,
+        string calldata description,
+        uint64 startTime,
+        uint64 votingPeriod
+    )
+        public
+    {
+        // TODO: Validate public parameters?
+        Vote storage newVote = votes[nextVoteId++];
+        newVote.parametersHash = keccak256(abi.encode(pp));
+        newVote.tally.u = 1.toUint1024();
+        newVote.tally.v = 1.toUint1024();
+        if (startTime == 0) {
+            startTime = uint64(block.timestamp);
+        } else if (startTime < block.timestamp) {
+            revert();
+        }
+        newVote.startTime = startTime;
+        newVote.endTime = startTime + votingPeriod;
+    }
+
+    function castBallot(
+        uint256 voteId,
+        PublicParameters memory pp,
+        Puzzle memory ballot,
+        ProofOfValidity memory PoV
+    )
+        public
+    {
+        Vote storage vote = votes[voteId];
+        if (
+            block.timestamp < vote.startTime || 
+            block.timestamp > vote.endTime
+        ) {
+            revert();
+        }
+        if (keccak256(abi.encode(pp)) != vote.parametersHash) {
+            revert();
+        }
+        verifyBallotValidity(pp, ballot, PoV);
+        vote.numVotes++;
+        updateTally(pp, vote.tally, ballot);
+    }
+
+    function updateTally(
+        PublicParameters memory pp,
+        Puzzle storage tally,
+        Puzzle memory vote
+    )
+        private
+    {
+        tally.u = tally.u.mulMod2(vote.u, pp.N);
+        tally.v = tally.v.mulMod2(vote.v, pp.N);
+    }
+
+    function verifyBallotValidity(
         PublicParameters memory pp,
         Puzzle memory Z,
         ProofOfValidity memory PoV
@@ -92,7 +159,7 @@ contract HomomorphicTimeLockVote {
     function verifySolutionCorrectness(
         PublicParameters memory pp,
         Puzzle memory Z,
-        uint256[4] memory s,
+        uint256 s,
         uint256[4] memory w,
         ProofOfExponentiation memory PoE
     )
@@ -103,14 +170,9 @@ contract HomomorphicTimeLockVote {
 
         verifyExponentiation(pp, Z.u, w, PoE);
 
-        uint256[4] memory N = pp.N;
-        uint256[4] memory y = pp.y;
-        uint256[4] memory v = Z.v;
-
         // Check v = w * y^s (mod N)
-        uint256[4] memory lhs = v.addMod(v, N).addMod(v, N).addMod(v, N); // TODO: optimize
-        uint256[4] memory rhs = w.mulMod(y.expMod(s, N), N);
-        if (!lhs.eq(rhs)) {
+        uint256[4] memory rhs = pp.y.expMod(s, pp.N).mulMod2(w, pp.N);
+        if (!Z.v.eq(rhs)) {
             // revert InvalidPuzzleSolution();
         }
     }
@@ -124,16 +186,15 @@ contract HomomorphicTimeLockVote {
         internal
         view
     {
-        uint256[4] memory N = pp.N;
         uint256 l = PoE.l;
 
         // TODO: Correct Fiat-Shamir input?
-        LibPrime.checkHashToPrime(abi.encode(w, PoE.j), l);
-        uint256 r = _expmod(2, pp.T, PoE.l); // r = 2^T (mod l)
-        // Check 4w = 4 * π^l * u^r
-        uint256[4] memory lhs = w.addMod(w, N).addMod(w, N).addMod(w, N); // TODO: optimize
-        uint256[4] memory rhs = PoE.pi.expMod(l, N).mulMod(u.expMod(r, N), N);
-        if (!lhs.eq(rhs)) {
+        LibPrime.checkHashToPrime(abi.encode(u, w, PoE.j), l);
+        uint256 r = _expmod(2, pp.T, l); // r = 2^T (mod l)
+        // Check w = π^l * u^r
+        uint256[4] memory rhs = PoE.pi.expMod(l, pp.N)
+            .mulMod2(u.expMod(r, pp.N), pp.N);
+        if (!w.eq(rhs)) {
             // revert InvalidProofOfExponentiation();
         }
     }
