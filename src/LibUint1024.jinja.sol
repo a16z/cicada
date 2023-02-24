@@ -211,7 +211,7 @@ library LibUint1024 {
 
     uint256 private constant MAX_UINT = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
 
-    function mulMod2(uint256[4] memory a, uint256[4] memory b, uint256[4] memory modulus)
+    function mulMod(uint256[4] memory a, uint256[4] memory b, uint256[4] memory modulus)
         internal
         view
         returns (uint256[4] memory result)
@@ -365,17 +365,6 @@ library LibUint1024 {
             // Update free memory pointer
             mstore(0x40, add(p, 0x200))
         }
-    }
-
-    function mulMod(uint256[4] memory a, uint256[4] memory b, uint256[4] memory modulus)
-        internal
-        view
-        returns (uint256[4] memory result)
-    {
-        uint256[4] memory sumSquared = a.addMod(b, modulus).expMod(2, modulus);
-        uint256[4] memory differenceSquared = a.subMod(b, modulus).expMod(2, modulus);
-        // Returns (a+b)^2 - (a-b)^2 = 4ab
-        return sumSquared.subMod(differenceSquared, modulus);
     }
 
     function addMod(uint256[4] memory a, uint256[4] memory b, uint256[4] memory modulus)

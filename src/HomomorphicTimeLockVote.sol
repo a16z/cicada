@@ -105,8 +105,8 @@ contract HomomorphicTimeLockVote {
     )
         private
     {
-        tally.u = tally.u.mulMod2(vote.u, pp.N);
-        tally.v = tally.v.mulMod2(vote.v, pp.N);
+        tally.u = tally.u.mulMod(vote.u, pp.N);
+        tally.v = tally.v.mulMod(vote.v, pp.N);
     }
 
     function verifyBallotValidity(
@@ -132,25 +132,25 @@ contract HomomorphicTimeLockVote {
         }
 
         uint256[4] memory lhs = pp.g.expMod(PoV.t_0, pp.N);
-        uint256[4] memory rhs = PoV.a_0.mulMod2(Z.u.expMod(PoV.c_0, pp.N), pp.N);
+        uint256[4] memory rhs = PoV.a_0.mulMod(Z.u.expMod(PoV.c_0, pp.N), pp.N);
         if (!lhs.eq(rhs)) {
             revert InvalidVote();
         }
 
         lhs = pp.h.expMod(PoV.t_0, pp.N);
-        rhs = PoV.b_0.mulMod2(Z.v.expMod(PoV.c_0, pp.N), pp.N);
+        rhs = PoV.b_0.mulMod(Z.v.expMod(PoV.c_0, pp.N), pp.N);
         if (!lhs.eq(rhs)) {
             revert InvalidVote();
         }
 
         lhs = pp.g.expMod(PoV.t_1, pp.N);
-        rhs = PoV.a_1.mulMod2(Z.u.expMod(PoV.c_1, pp.N), pp.N);
+        rhs = PoV.a_1.mulMod(Z.u.expMod(PoV.c_1, pp.N), pp.N);
         if (!lhs.eq(rhs)) {
             revert InvalidVote();
         }        
 
         lhs = pp.h.expMod(PoV.t_1, pp.N);
-        rhs = Z.v.mulMod2(pp.yInv, pp.N).expMod(PoV.c_1, pp.N).mulMod2(PoV.b_1, pp.N);
+        rhs = Z.v.mulMod(pp.yInv, pp.N).expMod(PoV.c_1, pp.N).mulMod(PoV.b_1, pp.N);
         if (!lhs.eq(rhs)) {
             revert InvalidVote();
         }
@@ -171,7 +171,7 @@ contract HomomorphicTimeLockVote {
         verifyExponentiation(pp, Z.u, w, PoE);
 
         // Check v = w * y^s (mod N)
-        uint256[4] memory rhs = pp.y.expMod(s, pp.N).mulMod2(w, pp.N);
+        uint256[4] memory rhs = pp.y.expMod(s, pp.N).mulMod(w, pp.N);
         if (!Z.v.eq(rhs)) {
             // revert InvalidPuzzleSolution();
         }
@@ -193,7 +193,7 @@ contract HomomorphicTimeLockVote {
         uint256 r = _expmod(2, pp.T, l); // r = 2^T (mod l)
         // Check w = π^l * u^r
         uint256[4] memory rhs = PoE.pi.expMod(l, pp.N)
-            .mulMod2(u.expMod(r, pp.N), pp.N);
+            .mulMod(u.expMod(r, pp.N), pp.N);
         if (!w.eq(rhs)) {
             // revert InvalidProofOfExponentiation();
         }

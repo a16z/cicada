@@ -1,78 +1,35 @@
 pragma solidity ^0.8;
 
 import 'forge-std/Test.sol';
-import '../src/LibUint2048.sol';
 import '../src/LibUint1024.jinja.sol';
 
-contract LibUint2048Test is Test {
-    using LibUint2048 for *;
+contract LibUint1024Test is Test {
     using LibUint1024 for *;
 
-    function testBigExpMod(
-        uint256[8] calldata base, 
-        // uint256[4] calldata exponent, 
-        // uint128 exponent,
-        uint256[8] calldata modulus
-    )
-        external
-    {
-        // vm.assume(exponent[0] > (1 << 255));
-        // vm.assume(exponent > (1 << 127));
-        uint gasBefore = gasleft();
-        base.expMod(uint256(1), modulus);
-        uint gasAfter = gasleft();
-        console.log(gasBefore - gasAfter);
-    }
-
-    function testBigMulMod(
-        uint256[4] calldata x, 
-        uint256[4] calldata y, 
-        uint256[4] calldata modulus
-    )
-        external
-    {
-        vm.assume(x.lt(modulus));
-        vm.assume(y.lt(modulus));
-        uint256[4] memory result = x.mulMod(y, modulus);
-    }
-
-    function testBigMulMod2(
-        uint256[4] calldata x, 
-        uint256[4] calldata y, 
-        uint256[4] calldata modulus
-    )
-        external
-    {
-        vm.assume(x.lt(modulus));
-        vm.assume(y.lt(modulus));
-        uint256[4] memory result = x.mulMod2(y, modulus);
-        // assertTrue(result.mulMod2(4.toUint1024(), modulus).eq(x.mulMod(y, modulus)));
-    }
-
-    function testReferenceAdd(uint256[8] memory a, uint256[8] memory b)
+    function testReferenceAdd(uint256[4] memory a, uint256[4] memory b)
         public
         noOverflow(a, b)
     {
-        uint256[8] memory pythonResult = _decodeBigNumber(_runPythonReference('add', a, b));
+        uint256[4] memory pythonResult = _decodeBigNumber(_runPythonReference('add', a, b));
         assertTrue(a.add(b).eq(pythonResult));
     }
 
-    function testReferenceSub(uint256[8] memory a, uint256[8] memory b)
+    function testReferenceSub(uint256[4] memory a, uint256[4] memory b)
         public
     {
         vm.assume(a.gte(b));
-        uint256[8] memory pythonResult = _decodeBigNumber(_runPythonReference('sub', a, b));
+        uint256[4] memory pythonResult = _decodeBigNumber(_runPythonReference('sub', a, b));
         assertTrue(a.sub(b).eq(pythonResult));
     }
 
-    function testReferenceGte(uint256[8] memory a, uint256[8] memory b)
+    function testReferenceGte(uint256[4] memory a, uint256[4] memory b)
         public
     {
         bool pythonResult = _decodeBool(_runPythonReference('gte', a, b));
         assertEq(a.gte(b), pythonResult);
     }
 
-    function testReferenceLte(uint256[8] memory a, uint256[8] memory b)
+    function testReferenceLte(uint256[4] memory a, uint256[4] memory b)
         public
     {
         bool pythonResult = _decodeBool(_runPythonReference('lte', a, b));
@@ -80,77 +37,91 @@ contract LibUint2048Test is Test {
     }
 
     function testReferenceAddMod(
-        uint256[8] memory a, 
-        uint256[8] memory b,
-        uint256[8] memory m
+        uint256[4] memory a, 
+        uint256[4] memory b,
+        uint256[4] memory m
     )
         public
         noOverflow(a, b)
     {
         vm.assume(a.lt(m) && b.lt(m));
-        uint256[8] memory pythonResult = _decodeBigNumber(_runPythonReference(
+        uint256[4] memory pythonResult = _decodeBigNumber(_runPythonReference(
             'addMod', 
             a, 
             b, 
             m
         ));
-        uint256[8] memory solidityResult = a.addMod(b, m);
+        uint256[4] memory solidityResult = a.addMod(b, m);
         assertTrue(solidityResult.eq(pythonResult));
     }
 
     function testReferenceSubMod(
-        uint256[8] memory a, 
-        uint256[8] memory b,
-        uint256[8] memory m
+        uint256[4] memory a, 
+        uint256[4] memory b,
+        uint256[4] memory m
     )
         public
     {
         vm.assume(a.lt(m) && b.lt(m));
-        uint256[8] memory pythonResult = _decodeBigNumber(_runPythonReference(
+        uint256[4] memory pythonResult = _decodeBigNumber(_runPythonReference(
             'subMod', 
             a, 
             b, 
             m
         ));
-        uint256[8] memory solidityResult = a.subMod(b, m);
+        uint256[4] memory solidityResult = a.subMod(b, m);
         assertTrue(solidityResult.eq(pythonResult));
     }
 
     function testReferenceExpMod(
-        uint256[8] memory a, 
+        uint256[4] memory a, 
         uint256 e,
-        uint256[8] memory m
+        uint256[4] memory m
     )
         public
     {
-        uint256[8] memory pythonResult = _decodeBigNumber(_runPythonExpMod(
+        uint256[4] memory pythonResult = _decodeBigNumber(_runPythonExpMod(
             a, 
             e,
             m
         ));
-        uint256[8] memory solidityResult = a.expMod(e, m);
+        uint256[4] memory solidityResult = a.expMod(e, m);
         assertTrue(solidityResult.eq(pythonResult));
     }
 
     function testReferenceMulMod(
-        uint256[8] memory a, 
-        uint256[8] memory b,
-        uint256[8] memory m
+        uint256[4] memory a, 
+        uint256[4] memory b,
+        uint256[4] memory m
     )
         public
         noOverflow(a, b)
     {
         vm.assume(a.lt(m) && b.lt(m));
-        uint256[8] memory pythonResult = _decodeBigNumber(_runPythonMulMod(
+        uint256[4] memory pythonResult = _decodeBigNumber(_runPythonMulMod(
             a, 
             b,
             m
         ));
-        uint256[8] memory solidityResult = a.mulMod(b, m);
+        uint256[4] memory solidityResult = a.mulMod(b, m);
         assertTrue(solidityResult.eq(pythonResult));
     }
 
-    function testGasAdd(uint256[8] memory a, uint256[8] memory b)
+    function testMulModAlt(
+        uint256[4] memory a, 
+        uint256[4] memory b,
+        uint256[4] memory m
+    )
+        public
+        noOverflow(a, b)
+    {
+        vm.assume(a.lt(m) && b.lt(m));
+        uint256[4] memory altResult = _mulModAlt(a, b, m);
+        uint256[4] memory result = a.mulMod(b, m).mulMod(4.toUint1024(), m);
+        assertTrue(result.eq(altResult));
+    }
+
+    function testGasAdd(uint256[4] memory a, uint256[4] memory b)
         public
         pure
         noOverflow(a, b)
@@ -158,7 +129,7 @@ contract LibUint2048Test is Test {
         a.add(b);
     }
 
-    function testGasSub(uint256[8] memory a, uint256[8] memory b)
+    function testGasSub(uint256[4] memory a, uint256[4] memory b)
         public
         pure
     {
@@ -166,21 +137,21 @@ contract LibUint2048Test is Test {
         a.sub(b);
     }
 
-    function testGasEq(uint256[8] memory a, uint256[8] memory b)
+    function testGasEq(uint256[4] memory a, uint256[4] memory b)
         public
         pure
     {
         a.eq(b);
     }
 
-    function testGasGte(uint256[8] memory a, uint256[8] memory b)
+    function testGasGte(uint256[4] memory a, uint256[4] memory b)
         public
         pure
     {
         a.gte(b);
     }
 
-    function testGasLte(uint256[8] memory a, uint256[8] memory b)
+    function testGasLte(uint256[4] memory a, uint256[4] memory b)
         public
         pure
     {
@@ -188,9 +159,9 @@ contract LibUint2048Test is Test {
     }
 
     function testGasAddMod(
-        uint256[8] memory a, 
-        uint256[8] memory b,
-        uint256[8] memory m
+        uint256[4] memory a, 
+        uint256[4] memory b,
+        uint256[4] memory m
     )
         public
         pure
@@ -201,9 +172,9 @@ contract LibUint2048Test is Test {
     }
 
     function testGasSubMod(
-        uint256[8] memory a, 
-        uint256[8] memory b,
-        uint256[8] memory m
+        uint256[4] memory a, 
+        uint256[4] memory b,
+        uint256[4] memory m
     )
         public
         pure
@@ -213,9 +184,9 @@ contract LibUint2048Test is Test {
     }
 
     function testGasExpMod(
-        uint256[8] memory a, 
+        uint256[4] memory a, 
         uint256 e,
-        uint256[8] memory m
+        uint256[4] memory m
     )
         public
         view
@@ -224,9 +195,9 @@ contract LibUint2048Test is Test {
     }
 
     function testGasMulMod(
-        uint256[8] memory a, 
-        uint256[8] memory b,
-        uint256[8] memory m
+        uint256[4] memory a, 
+        uint256[4] memory b,
+        uint256[4] memory m
     )
         public
         view
@@ -236,25 +207,25 @@ contract LibUint2048Test is Test {
         a.mulMod(b, m);
     }
 
-    function testAddCommutative(uint256[8] memory a, uint256[8] memory b)
+    function testAddCommutative(uint256[4] memory a, uint256[4] memory b)
         public
         noOverflow(a, b)
     {
-        uint256[8] memory sum1 = a.add(b);
-        uint256[8] memory sum2 = b.add(a);
+        uint256[4] memory sum1 = a.add(b);
+        uint256[4] memory sum2 = b.add(a);
         assertTrue(sum1.eq(sum2));
     }
 
-    function testAddSub(uint256[8] memory a, uint256[8] memory b)
+    function testAddSub(uint256[4] memory a, uint256[4] memory b)
         public
         noOverflow(a, b)
     {
-        uint256[8] memory sum = a.add(b);
+        uint256[4] memory sum = a.add(b);
         assertTrue(sum.sub(b).eq(a));
         assertTrue(sum.sub(a).eq(b));
     }
 
-    function testSubAdd(uint256[8] memory a, uint256[8] memory b)
+    function testSubAdd(uint256[4] memory a, uint256[4] memory b)
         public
     {
         vm.assume(a.gte(b));
@@ -265,39 +236,37 @@ contract LibUint2048Test is Test {
         public
     {
         vm.assume(m > 0);
+        vm.assume(e > 0);
         uint256 expectedResult = 1;
-        if (e != 0) {
-            uint256 pow = uint256(a % m);
-            expectedResult = (e & 1 != 0) ? pow : 1;
-            for (uint256 i = 1; (1 << i) <= e; i++) {
-                pow = (pow ** 2) % m;
-                if (e & (1 << i) != 0) {
-                    expectedResult = (expectedResult * pow) % m;
-                }
+        uint256 pow = uint256(a % m);
+        expectedResult = (e & 1 != 0) ? pow : 1;
+        for (uint256 i = 1; (1 << i) <= e; i++) {
+            pow = (pow ** 2) % m;
+            if (e & (1 << i) != 0) {
+                expectedResult = (expectedResult * pow) % m;
             }
         }
 
-        uint256[8] memory bigA = uint256(a).toUint2048();
-        uint256[8] memory bigM = m.toUint2048();
-        assertTrue(bigA.expMod(e, bigM).eq(expectedResult.toUint2048()));
+        uint256[4] memory bigA = uint256(a).toUint1024();
+        uint256[4] memory bigM = m.toUint1024();
+        assertTrue(bigA.expMod(e, bigM).eq(expectedResult.toUint1024()));
     }
 
     function testMulModSmall(uint256 a, uint256 b, uint256 m)
         public
     {
         vm.assume(a < m && b < m);
-        vm.assume(mulmod(a, b, m) <= type(uint256).max / 4);
-        uint256[8] memory bigA = a.toUint2048();
-        uint256[8] memory bigB = b.toUint2048();
-        uint256[8] memory bigM = m.toUint2048();
+        uint256[4] memory bigA = a.toUint1024();
+        uint256[4] memory bigB = b.toUint1024();
+        uint256[4] memory bigM = m.toUint1024();
 
-        uint256 expectedResult = (4 * mulmod(a, b, m)) % m;
-        assertTrue(bigA.mulMod(bigB, bigM).eq(expectedResult.toUint2048()));
+        uint256 expectedResult = mulmod(a, b, m);
+        assertTrue(bigA.mulMod(bigB, bigM).eq(expectedResult.toUint1024()));
     }
 
     // ================================================================
 
-    modifier noOverflow(uint256[8] memory a, uint256[8] memory b) {
+    modifier noOverflow(uint256[4] memory a, uint256[4] memory b) {
         unchecked {
             vm.assume(a[0] + b[0] > a[0]);
             vm.assume(a[0] + b[0] < type(uint256).max);
@@ -305,12 +274,28 @@ contract LibUint2048Test is Test {
         _;
     }
 
+    // Returns 4 * a * b % modulus
+    function _mulModAlt(
+        uint256[4] memory a, 
+        uint256[4] memory b, 
+        uint256[4] memory modulus
+    )
+        private
+        view
+        returns (uint256[4] memory result)
+    {
+        uint256[4] memory sumSquared = a.addMod(b, modulus).expMod(2, modulus);
+        uint256[4] memory differenceSquared = a.subMod(b, modulus).expMod(2, modulus);
+        // Returns (a+b)^2 - (a-b)^2 = 4ab
+        return sumSquared.subMod(differenceSquared, modulus);
+    }
+
     function _decodeBigNumber(bytes memory encoded)
         private
         pure
-        returns (uint256[8] memory c)
+        returns (uint256[4] memory c)
     {
-        c = abi.decode(encoded, (uint256[8]));
+        c = abi.decode(encoded, (uint256[4]));
         return c;
     }
 
@@ -324,8 +309,8 @@ contract LibUint2048Test is Test {
 
     function _runPythonReference(
         string memory operation,
-        uint256[8] memory a, 
-        uint256[8] memory b   
+        uint256[4] memory a, 
+        uint256[4] memory b   
     )
         private
         returns (bytes memory pythonResult)
@@ -347,9 +332,9 @@ contract LibUint2048Test is Test {
 
     function _runPythonReference(
         string memory operation,
-        uint256[8] memory a, 
-        uint256[8] memory b,
-        uint256[8] memory c
+        uint256[4] memory a, 
+        uint256[4] memory b,
+        uint256[4] memory c
     )
         private
         returns (bytes memory pythonResult)
@@ -372,9 +357,9 @@ contract LibUint2048Test is Test {
     }
 
     function _runPythonExpMod(
-        uint256[8] memory a, 
+        uint256[4] memory a, 
         uint256 e,
-        uint256[8] memory m
+        uint256[4] memory m
     )
         private
         returns (bytes memory pythonResult)
@@ -397,9 +382,9 @@ contract LibUint2048Test is Test {
     }
 
     function _runPythonMulMod(
-        uint256[8] memory a, 
-        uint256[8] memory b, 
-        uint256[8] memory m
+        uint256[4] memory a, 
+        uint256[4] memory b, 
+        uint256[4] memory m
     )
         private
         returns (bytes memory pythonResult)
