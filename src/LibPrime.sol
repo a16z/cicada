@@ -166,10 +166,10 @@ library LibPrime {
         return false;
     }
 
-    bytes32 constant HIGHEST_BIT_DE_BRUIJN_TABLE = 0x0009010a0d15021d0b0e10121619031e080c141c0f111807131b17061a05041f;
+    bytes32 constant HIGHEST_BIT_DE_BRUIJN_TABLE = 0x010a020b0e16031e0c0f1113171a041f090d151d10121908141c18071b060520;
     uint256 constant HIGHEST_BIT_DE_BRUIJN_SEQUENCE = 130329821;
     function bitLen(uint256 v)
-        private
+        internal
         pure
         returns (uint256 r)
     {
@@ -203,7 +203,7 @@ library LibPrime {
     bytes32 constant LOWEST_BIT_DE_BRUIJN_TABLE = 0x00011c021d0e18031e16140f191104081f1b0d17151310071a0c12060b050a09;
     uint256 constant LOWEST_BIT_DE_BRUIJN_SEQUENCE = 125613361;
     function trailingZeros(uint256 v)
-        private
+        internal
         pure
         returns (uint256 r)
     {

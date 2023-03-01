@@ -264,6 +264,38 @@ contract LibUint1024Test is Test {
         assertTrue(bigA.mulMod(bigB, bigM).eq(expectedResult.toUint1024()));
     }
 
+    function proveAddCommutative(uint256[4] memory a, uint256[4] memory b)
+        public
+        noOverflow(a, b)
+    {
+        uint256[4] memory sum1 = a.add(b);
+        uint256[4] memory sum2 = b.add(a);
+        assert(sum1.eq(sum2));
+    }
+
+    function proveAddSub1(uint256[4] memory a, uint256[4] memory b)
+        public
+        noOverflow(a, b)
+    {
+        uint256[4] memory sum = a.add(b);
+        assert(sum.sub(b).eq(a));
+    }
+
+    function proveAddSub2(uint256[4] memory a, uint256[4] memory b)
+        public
+        noOverflow(a, b)
+    {
+        uint256[4] memory sum = a.add(b);
+        assert(sum.sub(a).eq(b));
+    }
+
+    function proveSubAdd(uint256[4] memory a, uint256[4] memory b)
+        public
+    {
+        require(a.gte(b));
+        assert(a.sub(b).add(b).eq(a));
+    }
+
     // ================================================================
 
     modifier noOverflow(uint256[4] memory a, uint256[4] memory b) {
@@ -406,7 +438,7 @@ contract LibUint1024Test is Test {
         return vm.ffi(pythonCommand);
     }
 
-    function toHexString(bytes memory input) public pure returns (string memory) {
+    function toHexString(bytes memory input) private pure returns (string memory) {
         require(input.length < type(uint256).max / 2 - 1);
         bytes16 symbols = '0123456789abcdef';
         bytes memory hex_buffer = new bytes(2 * input.length + 2);
