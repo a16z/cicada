@@ -3,6 +3,11 @@ pragma solidity ^0.8;
 
 library LibPrime {
 
+    // A bitmask for testing membership in the set of the first 96 odd primes. 
+    // A bit vector contains elements in [0, 255]. Since all primes (other than 2)
+    // are odd, we know the last bit will be 1. So if we first check the parity of
+    // the candidate prime, we can drop the last bit and thus check all primes from
+    // [3, 511] in this bitvector. 
     uint256 private constant PRIMES_BIT_MASK = 
         (1 << (3 >> 1))   | (1 << (5 >> 1))   | (1 << (7 >> 1))   | (1 << (11 >> 1))  |
         (1 << (13 >> 1))  | (1 << (17 >> 1))  | (1 << (19 >> 1))  | (1 << (23 >> 1))  |
@@ -50,6 +55,8 @@ library LibPrime {
         uint256 prime
     );
 
+    // Based on Dankrad Feist's implementation:
+    // https://github.com/dankrad/rsa-bounty/blob/master/contract/rsa_bounty.sol
     function checkHashToPrime(
         bytes memory input,
         uint256 prime
@@ -72,6 +79,9 @@ library LibPrime {
         }
     }
 
+    // https://en.wikipedia.org/wiki/Baillie%E2%80%93PSW_primality_test
+    // The Baillie-PSW primality test has no known pseudoprimes,
+    // though it's conjectured that there are infinitely many. 
     function bailliePSW(uint256 n)
         internal
         view
@@ -80,6 +90,9 @@ library LibPrime {
         return lucas(n) && _millerRabinBase2(n);
     }
 
+    // https://en.wikipedia.org/wiki/Lucas_primality_test
+    // Based on the Go implementation:
+    // https://github.com/golang/go/blob/master/src/math/big/prime.go
     function lucas(uint256 n)
         internal
         pure
@@ -168,6 +181,11 @@ library LibPrime {
 
     bytes32 constant HIGHEST_BIT_DE_BRUIJN_TABLE = 0x010a020b0e16031e0c0f1113171a041f090d151d10121908141c18071b060520;
     uint256 constant HIGHEST_BIT_DE_BRUIJN_SEQUENCE = 130329821;
+
+    // A hybrid of the binary search appraoch and the de Bruijn approach
+    // described here: https://graphics.stanford.edu/~seander/bithacks.html#IntegerLogDeBruijn
+    // Note that bitlen(x) == log2(x) + 1, so the de Bruijn table values 
+    // are shifted by 1.
     function bitLen(uint256 v)
         internal
         pure
@@ -202,6 +220,9 @@ library LibPrime {
 
     bytes32 constant LOWEST_BIT_DE_BRUIJN_TABLE = 0x00011c021d0e18031e16140f191104081f1b0d17151310071a0c12060b050a09;
     uint256 constant LOWEST_BIT_DE_BRUIJN_SEQUENCE = 125613361;
+
+    // A hybrid of the binary search appraoch and the de Bruijn approach
+    // described here: https://graphics.stanford.edu/~seander/bithacks.html#ZerosOnRightMultLookup
     function trailingZeros(uint256 v)
         internal
         pure
@@ -228,6 +249,7 @@ library LibPrime {
         }
     }
 
+    // Returns the Jacobi symbol (d / n)
     function jacobi(uint256 d, uint256 n)
         internal
         pure
@@ -259,6 +281,10 @@ library LibPrime {
         }
     }
 
+    // Returns true if `certificate` is a valid Pocklington certificate 
+    // of primality. Providing a valid certificate guarantees that `n`
+    // is prime, whereas the primality tests in this library are probabilistic.
+    // https://en.wikipedia.org/wiki/Pocklington_primality_test
     function pocklington(uint256 n, PocklingtonStep[] memory certificate) 
         internal 
         view 
@@ -368,6 +394,7 @@ library LibPrime {
         return true;
     }
 
+    // Returns true iff `a` and `b` are coprime.
     function coprime(uint256 a, uint256 b)
         internal
         pure
@@ -460,6 +487,7 @@ library LibPrime {
         }
     }
 
+    // Miller-Rabin with a fixed base of 2, used in Baillie-PSW
     function _millerRabinBase2(uint256 n)
         private
         view
@@ -514,6 +542,9 @@ library LibPrime {
         }
     }
 
+    // Calls the expmod precompile assuming the parameters lengths (base, 
+    // exponent, and modulus are 32 bytes each) have already been mstore'd
+    // in the appropriate places.
     function _pocklingtonExpMod(uint256 base, uint256 exponent, uint256 modulus)
         private
         view
@@ -543,8 +574,11 @@ library LibPrime {
         if (n == 2) {
             return true;
         } else if (n & 1 == 0) {
+            // All other even numbers are composite.
             return false;
         }
+        // At this point we know `n` is odd, so we can drop the last bit and
+        // check whether `n` is in the first 96 odd primes using our bitmask. 
         return (1 << (n >> 1)) & PRIMES_BIT_MASK != 0;        
     }
 }

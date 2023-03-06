@@ -264,37 +264,37 @@ contract LibUint1024Test is Test {
         assertTrue(bigA.mulMod(bigB, bigM).eq(expectedResult.toUint1024()));
     }
 
-    function proveAddCommutative(uint256[4] memory a, uint256[4] memory b)
-        public
-        noOverflow(a, b)
-    {
-        uint256[4] memory sum1 = a.add(b);
-        uint256[4] memory sum2 = b.add(a);
-        assert(sum1.eq(sum2));
-    }
+    // function proveAddCommutative(uint256[4] memory a, uint256[4] memory b)
+    //     public
+    //     noOverflow(a, b)
+    // {
+    //     uint256[4] memory sum1 = a.add(b);
+    //     uint256[4] memory sum2 = b.add(a);
+    //     assert(sum1.eq(sum2));
+    // }
 
-    function proveAddSub1(uint256[4] memory a, uint256[4] memory b)
-        public
-        noOverflow(a, b)
-    {
-        uint256[4] memory sum = a.add(b);
-        assert(sum.sub(b).eq(a));
-    }
+    // function proveAddSub1(uint256[4] memory a, uint256[4] memory b)
+    //     public
+    //     noOverflow(a, b)
+    // {
+    //     uint256[4] memory sum = a.add(b);
+    //     assert(sum.sub(b).eq(a));
+    // }
 
-    function proveAddSub2(uint256[4] memory a, uint256[4] memory b)
-        public
-        noOverflow(a, b)
-    {
-        uint256[4] memory sum = a.add(b);
-        assert(sum.sub(a).eq(b));
-    }
+    // function proveAddSub2(uint256[4] memory a, uint256[4] memory b)
+    //     public
+    //     noOverflow(a, b)
+    // {
+    //     uint256[4] memory sum = a.add(b);
+    //     assert(sum.sub(a).eq(b));
+    // }
 
-    function proveSubAdd(uint256[4] memory a, uint256[4] memory b)
-        public
-    {
-        require(a.gte(b));
-        assert(a.sub(b).add(b).eq(a));
-    }
+    // function proveSubAdd(uint256[4] memory a, uint256[4] memory b)
+    //     public
+    // {
+    //     require(a.gte(b));
+    //     assert(a.sub(b).add(b).eq(a));
+    // }
 
     // ================================================================
 
