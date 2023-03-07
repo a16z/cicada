@@ -183,9 +183,20 @@ contract LibUint1024Test is Test {
         a.subMod(b, m);
     }
 
-    function testGasExpMod(
+    function testGasExpModSmall(
         uint256[4] memory a, 
         uint256 e,
+        uint256[4] memory m
+    )
+        public
+        view
+    {
+        a.expMod(e, m);
+    }
+
+    function testGasExpModBig(
+        uint256[4] memory a, 
+        uint256[4] memory e,
         uint256[4] memory m
     )
         public

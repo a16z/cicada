@@ -48,7 +48,7 @@ contract HomomorphicTimeLockVote {
     
     error InvalidProofOfExponentiation();
     error InvalidPuzzleSolution();
-    error InvalidVote();
+    error InvalidBallot();
 
     uint256 public nextVoteId = 1;
     mapping(uint256 => Vote) votes;
@@ -64,6 +64,8 @@ contract HomomorphicTimeLockVote {
         // TODO: Validate public parameters?
         Vote storage newVote = votes[nextVoteId++];
         newVote.parametersHash = keccak256(abi.encode(pp));
+        // TODO: Instantiate with a (different) 0 vote so that all 8 
+        // storage slots are populated.
         newVote.tally.u = 1.toUint1024();
         newVote.tally.v = 1.toUint1024();
         if (startTime == 0) {
@@ -127,32 +129,32 @@ contract HomomorphicTimeLockVote {
         )));
         unchecked {
             if (PoV.c_0 + PoV.c_1 != c) {
-                revert InvalidVote();
+                revert InvalidBallot();
             }
         }
 
         uint256[4] memory lhs = pp.g.expMod(PoV.t_0, pp.N);
         uint256[4] memory rhs = PoV.a_0.mulMod(Z.u.expMod(PoV.c_0, pp.N), pp.N);
         if (!lhs.eq(rhs)) {
-            revert InvalidVote();
+            revert InvalidBallot();
         }
 
         lhs = pp.h.expMod(PoV.t_0, pp.N);
         rhs = PoV.b_0.mulMod(Z.v.expMod(PoV.c_0, pp.N), pp.N);
         if (!lhs.eq(rhs)) {
-            revert InvalidVote();
+            revert InvalidBallot();
         }
 
         lhs = pp.g.expMod(PoV.t_1, pp.N);
         rhs = PoV.a_1.mulMod(Z.u.expMod(PoV.c_1, pp.N), pp.N);
         if (!lhs.eq(rhs)) {
-            revert InvalidVote();
+            revert InvalidBallot();
         }        
 
         lhs = pp.h.expMod(PoV.t_1, pp.N);
         rhs = Z.v.mulMod(pp.yInv, pp.N).expMod(PoV.c_1, pp.N).mulMod(PoV.b_1, pp.N);
         if (!lhs.eq(rhs)) {
-            revert InvalidVote();
+            revert InvalidBallot();
         }
     }
 
