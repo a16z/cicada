@@ -1,6 +1,6 @@
 pragma solidity ^0.8;
 
-import './LibUint1024.jinja.sol';
+import './LibUint1024.sol';
 import './LibPrime.sol';
 
 contract HomomorphicTimeLockVote {

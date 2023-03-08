@@ -304,7 +304,7 @@ library LibPrime {
         assembly {
             // Load free memory pointer
             let p := mload(0x40)
-            // Store parameters for the Expmod (0x05) precompile
+            // Store parameters for the EXPMOD precompile
             mstore(p, 0x20)                  // Length of base 
             mstore(add(p, 0x20), 0x20)       // Length of exponent
             mstore(add(p, 0x40), 0x20)       // Length of modulus 
@@ -435,7 +435,7 @@ library LibPrime {
                 mstore(0x20, blockhash(sub(number(), 1)))
                 // Get free memory pointer
                 memPtr := mload(0x40)
-                // Store parameters for the Expmod (0x05) precompile
+                // Store parameters for the EXPMOD precompile
                 mstore(memPtr, 0x20)             // Length of Base
                 mstore(add(memPtr, 0x20), 0x20)  // Length of Exponent
                 mstore(add(memPtr, 0x40), 0x20)  // Length of Modulus
@@ -504,7 +504,7 @@ library LibPrime {
             assembly { 
                 // Get free memory pointer
                 let p := mload(0x40)
-                // Store parameters for the Expmod (0x05) precompile
+                // Store parameters for the EXPMOD precompile
                 mstore(p, 0x20)             // Length of Base
                 mstore(add(p, 0x20), 0x20)  // Length of Exponent
                 mstore(add(p, 0x40), 0x20)  // Length of Modulus
@@ -534,7 +534,7 @@ library LibPrime {
         }
     }
 
-    // Calls the expmod precompile assuming the parameters lengths (base, 
+    // Calls the EXPMOD precompile assuming the parameters lengths (base, 
     // exponent, and modulus are 32 bytes each) have already been mstore'd
     // in the appropriate places.
     function _pocklingtonExpMod(uint256 base, uint256 exponent, uint256 modulus)
@@ -546,7 +546,7 @@ library LibPrime {
             // Get free memory pointer
             let p := mload(0x40)
 
-            // Store parameters for the Expmod (0x05) precompile
+            // Store parameters for the EXPMOD precompile
             mstore(add(p, 0x60), base)       // Store the base
             mstore(add(p, 0x80), exponent)   // Store the exponent
             mstore(add(p, 0xa0), modulus)   // Store the modulus

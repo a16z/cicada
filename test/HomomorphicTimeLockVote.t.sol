@@ -2,7 +2,7 @@ pragma solidity ^0.8;
 
 import 'forge-std/Test.sol';
 import '../src/HomomorphicTimeLockVote.sol';
-import '../src/LibUint1024.jinja.sol';
+import '../src/LibUint1024.sol';
 
 
 contract HomomorphicTimeLockVoteTest is Test {

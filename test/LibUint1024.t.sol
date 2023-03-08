@@ -1,7 +1,7 @@
 pragma solidity ^0.8;
 
 import 'forge-std/Test.sol';
-import '../src/LibUint1024.jinja.sol';
+import '../src/LibUint1024.sol';
 
 contract LibUint1024Test is Test {
     using LibUint1024 for *;

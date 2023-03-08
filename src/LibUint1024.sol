@@ -237,7 +237,7 @@ library LibUint1024 {
     }
 
     // Computes (a * b) % modulus. Assumes a < modulus and b < modulus.
-    // Uses the "schoolbook" multiplication algorithm, plus the expmod
+    // Uses the "schoolbook" multiplication algorithm, plus the EXPMOD
     // precompile to reduce by the modulus.
     function mulMod(uint256[4] memory a, uint256[4] memory b, uint256[4] memory modulus)
         internal
@@ -487,10 +487,10 @@ library LibUint1024 {
             // r0 += c0 (cannot overflow)
             mstore(add(p, 0x60), add(r0, c0))
             
-            // Use expmod precompile to compute
+            // Use EXPMOD precompile to compute
             // (r ** 1) % modulus = r % modulus
 
-            // Store parameters for the Expmod (0x05) precompile
+            // Store parameters for the EXPMOD precompile
             mstore(p, 0x100)               // Length of base (8 * 32 = 256 bytes)
             mstore(add(p, 0x20), 0x20)     // Length of exponent
             mstore(add(p, 0x40), 0x80)     // Length of modulus (4 * 32 = 128 bytes)
@@ -556,7 +556,7 @@ library LibUint1024 {
             // Get free memory pointer
             let p := mload(0x40)
 
-            // Store parameters for the Expmod (0x05) precompile
+            // Store parameters for the EXPMOD precompile
             mstore(p, 0x80)                // Length of base (4 * 32 = 128 bytes)
             mstore(add(p, 0x20), 0x20)     // Length of exponent (32 bytes)
             mstore(add(p, 0x40), 0x80)     // Length of modulus (4 * 32 = 128 bytes)
@@ -595,7 +595,7 @@ library LibUint1024 {
             // Get free memory pointer
             let p := mload(0x40)
 
-            // Store parameters for the Expmod (0x05) precompile
+            // Store parameters for the EXPMOD precompile
             mstore(p, 0x80)               // Length of base (4 * 32 = 128 bytes)
             mstore(add(p, 0x20), 0x80)    // Length of exponent (4 * 32 = 128 bytes)
             mstore(add(p, 0x40), 0x80)    // Length of modulus (4 * 32 = 128 bytes)
