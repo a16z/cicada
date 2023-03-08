@@ -175,7 +175,7 @@ contract HomomorphicTimeLockVote {
         // Check v = w * y^s (mod N)
         uint256[4] memory rhs = pp.y.expMod(s, pp.N).mulMod(w, pp.N);
         if (!Z.v.eq(rhs)) {
-            // revert InvalidPuzzleSolution();
+            revert InvalidPuzzleSolution();
         }
     }
 
@@ -185,7 +185,7 @@ contract HomomorphicTimeLockVote {
         uint256[4] memory w,
         ProofOfExponentiation memory PoE
     )
-        public
+        internal
         view
     {
         uint256 l = PoE.l;

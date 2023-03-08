@@ -26,9 +26,11 @@ def generate_proof_of_exponentiation_test(i):
     yInv = pow(y, -1, N)
 
     r = random.randint(0, MAX_UINT256)
+    s = random.randint(0, 2 ** 32)
 
     u = pow(g, r, N)
     w = pow(u, 2 ** T, N)
+    v = (w * pow(y, s, N)) % N
 
     j = 0
     l = None
@@ -51,7 +53,7 @@ def generate_proof_of_exponentiation_test(i):
         trim_blocks=True,
         lstrip_blocks=True
     )
-    template = environment.get_template("ProofOfExponentiationTest.sol.jinja")
+    template = environment.get_template("VerifySolutionTest.sol.jinja")
 
     # pprint({
     #     'N': N,
@@ -61,20 +63,22 @@ def generate_proof_of_exponentiation_test(i):
     #     'y': y,
     #     'yInv': yInv,
     #     'r': r,
+    #     's': s,
     #     'u': u,
     #     'w': w,
+    #     'v': v,
     #     'π': pi,
     #     'j': j,
     #     'l': l
     # })
-    [N, g, h, y, yInv, u, w, pi] = map(
+    [N, g, h, y, yInv, u, w, v, pi] = map(
         lambda x: to_uint_1024(x),
-        [N, g, h, y, yInv, u, w, pi]
+        [N, g, h, y, yInv, u, w, v, pi]
     )
     rendered = template.render(
         i=i,
         N=N, T=T, g=g, h=h, y=y, yInv=yInv,
-        u=u, w=w,
+        u=u, w=w, v=v, s=s,
         pi=pi, j=j, l=l
     )
     print(rendered)

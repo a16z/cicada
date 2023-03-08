@@ -1,4 +1,4 @@
-    function testProofOfExponentiation{{ i }}()
+    function testVerifySolution{{ i }}()
         external
         view
     {
@@ -35,16 +35,25 @@
             {% endfor %}
         ];
 
-        uint256[4] memory u = [
-            {% for element in u %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
-            
-            {% endfor %}
-        ];
+        uint256 s = {{ s }};
         uint256[4] memory w = [
             {% for element in w %}
             {{ element }}{% if loop.index != 4 %},{% endif %}
             
+            {% endfor %}
+        ];
+
+        HomomorphicTimeLockVote.Puzzle memory Z;
+        Z.u = [
+            {% for element in u %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        Z.v = [
+            {% for element in v %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
             {% endfor %}
         ];
 
@@ -58,5 +67,5 @@
         PoE.j = {{ j }};
         PoE.l = {{ l }};
 
-        vote.verifyExponentiation(pp, u, w, PoE);
+        vote.verifySolutionCorrectness(pp, Z, s, w, PoE);
     }
