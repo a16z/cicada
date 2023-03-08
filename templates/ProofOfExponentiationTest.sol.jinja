@@ -1,0 +1,62 @@
+    function testProofOfExponentiation{{ i }}()
+        external
+        view
+    {
+        HomomorphicTimeLockVote.PublicParameters memory pp;
+        pp.N = [
+            {% for element in N %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.T = {{ T }};
+        pp.g = [
+            {% for element in g %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.h = [
+            {% for element in h %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.y = [
+            {% for element in y %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.yInv = [
+            {% for element in yInv %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+
+        uint256[4] memory u = [
+            {% for element in u %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        uint256[4] memory w = [
+            {% for element in w %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+
+        HomomorphicTimeLockVote.ProofOfExponentiation memory PoE;
+        PoE.pi = [
+            {% for element in pi %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        PoE.j = {{ j }};
+        PoE.l = {{ l }};
+
+        vote.verifyExponentiation(pp, u, w, PoE);
+    }

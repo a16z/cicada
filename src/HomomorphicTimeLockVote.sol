@@ -185,7 +185,7 @@ contract HomomorphicTimeLockVote {
         uint256[4] memory w,
         ProofOfExponentiation memory PoE
     )
-        internal
+        public
         view
     {
         uint256 l = PoE.l;
@@ -197,7 +197,7 @@ contract HomomorphicTimeLockVote {
         uint256[4] memory rhs = PoE.pi.expMod(l, pp.N)
             .mulMod(u.expMod(r, pp.N), pp.N);
         if (!w.eq(rhs)) {
-            // revert InvalidProofOfExponentiation();
+            revert InvalidProofOfExponentiation();
         }
     }
 

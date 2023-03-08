@@ -35,8 +35,6 @@ library LibPrime {
         (1 << (491 >> 1)) | (1 << (499 >> 1)) | (1 << (503 >> 1)) | (1 << (509 >> 1));
 
     uint256 private constant HIGH_BIT = 1 << 255;
-    // TODO: Is the mask necessary?
-    uint256 private constant HASH_TO_PRIME_MASK = 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000;
 
     struct PocklingtonNums {
         uint256 p;
@@ -51,7 +49,7 @@ library LibPrime {
     }
 
     error InvalidHashToPrime(
-        bytes32 input,
+        bytes input,
         uint256 prime
     );
 
@@ -64,18 +62,12 @@ library LibPrime {
         internal
         view
     {
-        bytes32 hashedInput = keccak256(input);
-        if (
-            prime & HASH_TO_PRIME_MASK != 
-            uint256(hashedInput) & HASH_TO_PRIME_MASK
-        ) {
-            revert InvalidHashToPrime(hashedInput, prime);
-        }
-        if (prime & HIGH_BIT == 0) {
-            revert InvalidHashToPrime(hashedInput, prime);
+        uint256 hashedInput = uint256(keccak256(input));
+        if (hashedInput | HIGH_BIT != prime) {
+            revert InvalidHashToPrime(input, prime);
         }
         if (!bailliePSW(prime)) {
-            revert InvalidHashToPrime(hashedInput, prime);
+            revert InvalidHashToPrime(input, prime);
         }
     }
 

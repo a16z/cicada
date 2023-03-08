@@ -5,7 +5,6 @@ import random
 from web3 import Web3
 
 MAX_UINT256 = pow(2, 256) - 1
-MAX_UINT1024 = pow(2, 1024) - 1
 
 
 def to_uint_1024(x):
