@@ -51,7 +51,7 @@ contract HomomorphicTimeLockVote {
     error InvalidBallot();
 
     uint256 public nextVoteId = 1;
-    mapping(uint256 => Vote) votes;
+    mapping(uint256 => Vote) public votes;
 
     function createVote(
         PublicParameters memory pp,
@@ -64,10 +64,14 @@ contract HomomorphicTimeLockVote {
         // TODO: Validate public parameters?
         Vote storage newVote = votes[nextVoteId++];
         newVote.parametersHash = keccak256(abi.encode(pp));
-        // TODO: Instantiate with a (different) 0 vote so that all 8 
-        // storage slots are populated.
-        newVote.tally.u = 1.toUint1024();
-        newVote.tally.v = 1.toUint1024();
+        // This instantiates the tally to 0:
+        //     u = g^1 (mod N)
+        //     v = h^1 * y^0 (mod N)
+        // and populates the tally storage slots so subsequent SSTOREs
+        // incur a gas cost of SSTORE_RESET_GAS (~5k) instead of 
+        // SSTORE_SET_GAS (~20k).
+        newVote.tally.u = pp.g;
+        newVote.tally.v = pp.h;
         if (startTime == 0) {
             startTime = uint64(block.timestamp);
         } else if (startTime < block.timestamp) {
