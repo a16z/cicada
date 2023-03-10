@@ -8,7 +8,7 @@ contract HomomorphicTimeLockVote {
 
     struct PublicParameters {
         uint256[4] N;
-        // uint256[4] halfN; // ?
+        // uint256[4] halfN;
         uint256 T;
         uint256[4] g;
         uint256[4] h;
@@ -96,10 +96,11 @@ contract HomomorphicTimeLockVote {
         ) {
             revert();
         }
-        if (keccak256(abi.encode(pp)) != vote.parametersHash) {
+        bytes32 parametersHash = keccak256(abi.encode(pp));
+        if (parametersHash != vote.parametersHash) {
             revert();
         }
-        verifyBallotValidity(pp, ballot, PoV);
+        verifyBallotValidity(pp, parametersHash, ballot, PoV);
         vote.numVotes++;
         updateTally(pp, vote.tally, ballot);
     }
@@ -117,6 +118,7 @@ contract HomomorphicTimeLockVote {
 
     function verifyBallotValidity(
         PublicParameters memory pp,
+        bytes32 parametersHash,
         Puzzle memory Z,
         ProofOfValidity memory PoV
     )
@@ -129,7 +131,8 @@ contract HomomorphicTimeLockVote {
             PoV.a_0,
             PoV.b_0,
             PoV.a_1,
-            PoV.b_1
+            PoV.b_1,
+            parametersHash
         )));
         unchecked {
             if (PoV.c_0 + PoV.c_1 != c) {
@@ -173,8 +176,8 @@ contract HomomorphicTimeLockVote {
         view
     {
         // TODO: Check that things are in [0, N/2]?
-
-        verifyExponentiation(pp, Z.u, w, PoE);
+        bytes32 parametersHash = keccak256(abi.encode(pp));
+        verifyExponentiation(pp, parametersHash, Z.u, w, PoE);
 
         // Check v = w * y^s (mod N)
         uint256[4] memory rhs = pp.y.expMod(s, pp.N).mulMod(w, pp.N);
@@ -185,6 +188,7 @@ contract HomomorphicTimeLockVote {
 
     function verifyExponentiation(
         PublicParameters memory pp,
+        bytes32 parametersHash,
         uint256[4] memory u,
         uint256[4] memory w,
         ProofOfExponentiation memory PoE
@@ -193,9 +197,8 @@ contract HomomorphicTimeLockVote {
         view
     {
         uint256 l = PoE.l;
+        LibPrime.checkHashToPrime(abi.encode(u, w, parametersHash, PoE.j), l);
 
-        // TODO: Correct Fiat-Shamir input?
-        LibPrime.checkHashToPrime(abi.encode(u, w, PoE.j), l);
         uint256 r = _expmod(2, pp.T, l); // r = 2^T (mod l)
         // Check w = π^l * u^r
         uint256[4] memory rhs = PoE.pi.expMod(l, pp.N)

@@ -31,6 +31,13 @@ def generate_ballot_test(i):
     y = random.randint(0, N)
     yInv = pow(y, -1, N)
 
+    parametersHash = Web3.solidityKeccak(
+        ['uint256[4]', 'uint256', 'uint256[4]',
+            'uint256[4]', 'uint256[4]', 'uint256[4]'],
+        [to_uint_1024(N), T, to_uint_1024(g), to_uint_1024(h),
+         to_uint_1024(y), to_uint_1024(yInv)]
+    )
+
     # Ballot
     r = random.randint(0, MAX_UINT256)
     s = random.randint(0, 1)  # secret 0/1 vote
@@ -46,9 +53,9 @@ def generate_ballot_test(i):
         a0 = pow(g, r0, N)
         b0 = pow(h, r0, N)
         c = int.from_bytes(Web3.solidityKeccak(
-            ['uint256[4]'] * 4,
+            ['uint256[4]'] * 4 + ['bytes32'],
             [to_uint_1024(a0), to_uint_1024(
-                b0), to_uint_1024(a1), to_uint_1024(b1)]
+                b0), to_uint_1024(a1), to_uint_1024(b1), parametersHash]
         ), byteorder='big')
         c0 = (c - c1) % pow(2, 256)
         t0 = r0 + c0 * r
@@ -58,9 +65,9 @@ def generate_ballot_test(i):
         a1 = pow(g, r1, N)
         b1 = pow(h, r1, N)
         c = int.from_bytes(Web3.solidityKeccak(
-            ['uint256[4]'] * 4,
+            ['uint256[4]'] * 4 + ['bytes32'],
             [to_uint_1024(a0), to_uint_1024(
-                b0), to_uint_1024(a1), to_uint_1024(b1)]
+                b0), to_uint_1024(a1), to_uint_1024(b1), parametersHash]
         ), byteorder='big')
         c1 = (c - c0) % pow(2, 256)
         t1 = r1 + c1 * r
@@ -70,7 +77,7 @@ def generate_ballot_test(i):
         trim_blocks=True,
         lstrip_blocks=True
     )
-    template = environment.get_template("BallotValidityTest.sol.jinja")
+    template = environment.get_template("VerifyBallotTest.sol.jinja")
     # pprint({
     #     'N': N,
     #     'T': T,

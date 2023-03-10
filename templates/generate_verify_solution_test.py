@@ -25,6 +25,12 @@ def generate_proof_of_exponentiation_test(i):
     y = random.randint(0, N)
     yInv = pow(y, -1, N)
 
+    parametersHash = Web3.solidityKeccak(
+        ['uint256[4]', 'uint256', 'uint256[4]',
+            'uint256[4]', 'uint256[4]', 'uint256[4]'],
+        [to_uint_1024(N), T, to_uint_1024(g), to_uint_1024(h), to_uint_1024(y), to_uint_1024(yInv)]
+    )
+
     r = random.randint(0, MAX_UINT256)
     s = random.randint(0, 2 ** 32)
 
@@ -36,8 +42,8 @@ def generate_proof_of_exponentiation_test(i):
     l = None
     while True:
         hash = int.from_bytes(Web3.solidityKeccak(
-            ['uint256[4]', 'uint256[4]', 'uint256'],
-            [to_uint_1024(u), to_uint_1024(w), j]
+            ['uint256[4]', 'uint256[4]', 'bytes32', 'uint256'],
+            [to_uint_1024(u), to_uint_1024(w), parametersHash, j]
         ), byteorder='big')
         candidate = hash | HIGH_BIT
         if isprime(candidate):

@@ -90,5 +90,5 @@
         ];
         PoV.c_1 = {{ c1 }};
 
-        vote.verifyBallotValidity(pp, Z, PoV);
+        vote.verifyBallotValidity(pp, keccak256(abi.encode(pp)), Z, PoV);
     }
