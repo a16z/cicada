@@ -44,7 +44,7 @@ library LibUint1024 {
 
     // Computes a + b, returning the 1024-bit result and the carry bit.
     function _add(uint256[4] memory a, uint256[4] memory b) 
-        private 
+        internal
         pure
         returns (uint256[4] memory c, uint256 carry)
     {
@@ -88,7 +88,7 @@ library LibUint1024 {
 
     // Computes a - b, returning the 1024-bit result and the carry bit.
     function _sub(uint256[4] memory a, uint256[4] memory b) 
-        private 
+        internal 
         pure
         returns (uint256[4] memory c, uint256 carry)
     {
@@ -620,5 +620,20 @@ library LibUint1024 {
             // Update free memory pointer
             mstore(0x40, add(p, 0x1e0))
         }
+    }
+
+    function normalize(
+        uint256[4] memory x,
+        uint256[4] memory modulus
+    )
+        internal
+        pure
+        returns (uint256[4] memory normalized)
+    {
+        uint256[4] memory negX = modulus.sub(x);
+        if (negX.lt(x)) {
+            return negX;
+        }
+        return x;
     }
 }

@@ -16,14 +16,18 @@ def to_uint_1024(x):
     return [int(part, 2) for part in parts]
 
 
+def normalize(x, N):
+    return x if x < N / 2 else N - x
+
+
 def generate_proof_of_exponentiation_test(i):
     # Public parameters
     N = RSA.generate(1024).n
     T = random.randint(1000, 100000)
-    g = random.randint(0, N)
-    h = pow(g, 2 ** T, N)
-    y = random.randint(0, N)
-    yInv = pow(y, -1, N)
+    g = normalize(random.randint(0, N), N)
+    h = normalize(pow(g, 2 ** T, N), N)
+    y = normalize(random.randint(0, N), N)
+    yInv = normalize(pow(y, -1, N), N)
 
     parametersHash = Web3.solidityKeccak(
         ['uint256[4]', 'uint256', 'uint256[4]',
@@ -34,9 +38,9 @@ def generate_proof_of_exponentiation_test(i):
     r = random.randint(0, MAX_UINT256)
     s = random.randint(0, 2 ** 32)
 
-    u = pow(g, r, N)
-    w = pow(u, 2 ** T, N)
-    v = (w * pow(y, s, N)) % N
+    u = normalize(pow(g, r, N), N)
+    w = normalize(pow(u, 2 ** T, N), N)
+    v = normalize((w * pow(y, s, N)) % N, N)
 
     j = 0
     l = None
@@ -52,7 +56,7 @@ def generate_proof_of_exponentiation_test(i):
         j += 1
 
     q = (2 ** T) // l
-    pi = pow(u, q, N)
+    pi = normalize(pow(u, q, N), N)
 
     environment = Environment(
         loader=FileSystemLoader("templates/"),

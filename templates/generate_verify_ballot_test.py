@@ -14,11 +14,15 @@ def to_uint_1024(x):
     return [int(part, 2) for part in parts]
 
 
+def normalize(x, N):
+    return x if x < N / 2 else N - x
+
+
 def simulator(N, g, h, u, v, r, yInv=1):
     c = random.randint(0, MAX_UINT256)
     t = random.randint(0, MAX_UINT256) + r * c
-    a = (pow(g, t, N) * pow(u, -c, N)) % N
-    b = (pow(h, t, N) * pow(v * yInv, -c, N)) % N
+    a = normalize((pow(g, t, N) * pow(u, -c, N)) % N, N)
+    b = normalize((pow(h, t, N) * pow(v * yInv, -c, N)) % N, N)
     return (a, b, c, t)
 
 
@@ -26,10 +30,10 @@ def generate_ballot_test(i):
     # Public parameters
     N = RSA.generate(1024).n
     T = random.randint(1000, 100000)
-    g = random.randint(0, N)
-    h = pow(g, 2 ** T, N)
-    y = random.randint(0, N)
-    yInv = pow(y, -1, N)
+    g = normalize(random.randint(0, N), N)
+    h = normalize(pow(g, 2 ** T, N), N)
+    y = normalize(random.randint(0, N), N)
+    yInv = normalize(pow(y, -1, N), N)
 
     parametersHash = Web3.solidityKeccak(
         ['uint256[4]', 'uint256', 'uint256[4]',
@@ -41,8 +45,8 @@ def generate_ballot_test(i):
     # Ballot
     r = random.randint(0, MAX_UINT256)
     s = random.randint(0, 1)  # secret 0/1 vote
-    u = pow(g, r, N)
-    v = (pow(h, r, N) * pow(y, s, N)) % N
+    u = normalize(pow(g, r, N), N)
+    v = normalize((pow(h, r, N) * pow(y, s, N)) % N, N)
 
     # Proof of ballot validity
     a0 = b0 = c0 = t0 = a1 = b1 = c1 = t1 = None
@@ -50,8 +54,8 @@ def generate_ballot_test(i):
     if s == 0:
         a1, b1, c1, t1 = simulator(N, g, h, u, v, r, yInv)
         r0 = random.randint(0, MAX_UINT256)
-        a0 = pow(g, r0, N)
-        b0 = pow(h, r0, N)
+        a0 = normalize(pow(g, r0, N), N)
+        b0 = normalize(pow(h, r0, N), N)
         c = int.from_bytes(Web3.solidityKeccak(
             ['uint256[4]'] * 4 + ['bytes32'],
             [to_uint_1024(a0), to_uint_1024(
@@ -62,8 +66,8 @@ def generate_ballot_test(i):
     else:
         a0, b0, c0, t0 = simulator(N, g, h, u, v, r)
         r1 = random.randint(0, MAX_UINT256)
-        a1 = pow(g, r1, N)
-        b1 = pow(h, r1, N)
+        a1 = normalize(pow(g, r1, N), N)
+        b1 = normalize(pow(h, r1, N), N)
         c = int.from_bytes(Web3.solidityKeccak(
             ['uint256[4]'] * 4 + ['bytes32'],
             [to_uint_1024(a0), to_uint_1024(

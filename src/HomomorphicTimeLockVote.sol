@@ -3,12 +3,12 @@ pragma solidity ^0.8;
 import './LibUint1024.sol';
 import './LibPrime.sol';
 
+
 contract HomomorphicTimeLockVote {
     using LibUint1024 for *;
 
     struct PublicParameters {
         uint256[4] N;
-        // uint256[4] halfN;
         uint256 T;
         uint256[4] g;
         uint256[4] h;
@@ -61,9 +61,20 @@ contract HomomorphicTimeLockVote {
     )
         public
     {
-        // TODO: Validate public parameters?
+        // TODO: Validate g and y generated via Fiat-Shamir? 
+        //       Validate h = g^(2^T)?
+        pp.g = pp.g.normalize(pp.N);
+        pp.h = pp.h.normalize(pp.N);
+        pp.y = pp.y.normalize(pp.N);
+        pp.yInv = pp.yInv.normalize(pp.N);
+        // y * y^(-1) = 1 (mod N)
+        if (!pp.y.mulMod(pp.yInv, pp.N).eq(1.toUint1024())) {
+            revert();
+        }
+
         Vote storage newVote = votes[nextVoteId++];
         newVote.parametersHash = keccak256(abi.encode(pp));
+
         // This instantiates the tally to 0:
         //     u = g^1 (mod N)
         //     v = h^1 * y^0 (mod N)
@@ -112,8 +123,8 @@ contract HomomorphicTimeLockVote {
     )
         private
     {
-        tally.u = tally.u.mulMod(vote.u, pp.N);
-        tally.v = tally.v.mulMod(vote.v, pp.N);
+        tally.u = tally.u.mulMod(vote.u, pp.N).normalize(pp.N);
+        tally.v = tally.v.mulMod(vote.v, pp.N).normalize(pp.N);
     }
 
     function verifyBallotValidity(
@@ -125,7 +136,10 @@ contract HomomorphicTimeLockVote {
         public
         view
     {
-        // TODO: Check proof variables in correct domains?
+        PoV.a_0 = PoV.a_0.normalize(pp.N);
+        PoV.b_0 = PoV.b_0.normalize(pp.N);
+        PoV.a_1 = PoV.a_1.normalize(pp.N);
+        PoV.b_1 = PoV.b_1.normalize(pp.N);
 
         uint256 c = uint256(keccak256(abi.encode(
             PoV.a_0,
@@ -140,26 +154,47 @@ contract HomomorphicTimeLockVote {
             }
         }
 
-        uint256[4] memory lhs = pp.g.expMod(PoV.t_0, pp.N);
-        uint256[4] memory rhs = PoV.a_0.mulMod(Z.u.expMod(PoV.c_0, pp.N), pp.N);
+        uint256[4] memory lhs = pp.g
+            .expMod(PoV.t_0, pp.N)
+            .normalize(pp.N);
+        uint256[4] memory rhs = Z.u
+            .expMod(PoV.c_0, pp.N)
+            .mulMod(PoV.a_0, pp.N)
+            .normalize(pp.N);
         if (!lhs.eq(rhs)) {
             revert InvalidBallot();
         }
 
-        lhs = pp.h.expMod(PoV.t_0, pp.N);
-        rhs = PoV.b_0.mulMod(Z.v.expMod(PoV.c_0, pp.N), pp.N);
+        lhs = pp.h
+            .expMod(PoV.t_0, pp.N)
+            .normalize(pp.N);
+        rhs = Z.v
+            .expMod(PoV.c_0, pp.N)
+            .mulMod(PoV.b_0, pp.N)
+            .normalize(pp.N);
         if (!lhs.eq(rhs)) {
             revert InvalidBallot();
         }
 
-        lhs = pp.g.expMod(PoV.t_1, pp.N);
-        rhs = PoV.a_1.mulMod(Z.u.expMod(PoV.c_1, pp.N), pp.N);
+        lhs = pp.g
+            .expMod(PoV.t_1, pp.N)
+            .normalize(pp.N);
+        rhs = Z.u
+            .expMod(PoV.c_1, pp.N)
+            .mulMod(PoV.a_1, pp.N)
+            .normalize(pp.N);
         if (!lhs.eq(rhs)) {
             revert InvalidBallot();
-        }        
+        }
 
-        lhs = pp.h.expMod(PoV.t_1, pp.N);
-        rhs = Z.v.mulMod(pp.yInv, pp.N).expMod(PoV.c_1, pp.N).mulMod(PoV.b_1, pp.N);
+        lhs = pp.h
+            .expMod(PoV.t_1, pp.N)
+            .normalize(pp.N);
+        rhs = Z.v
+            .mulMod(pp.yInv, pp.N)
+            .expMod(PoV.c_1, pp.N)
+            .mulMod(PoV.b_1, pp.N)
+            .normalize(pp.N);
         if (!lhs.eq(rhs)) {
             revert InvalidBallot();
         }
@@ -175,12 +210,16 @@ contract HomomorphicTimeLockVote {
         public
         view
     {
-        // TODO: Check that things are in [0, N/2]?
+        w = w.normalize(pp.N);
+
         bytes32 parametersHash = keccak256(abi.encode(pp));
         verifyExponentiation(pp, parametersHash, Z.u, w, PoE);
 
         // Check v = w * y^s (mod N)
-        uint256[4] memory rhs = pp.y.expMod(s, pp.N).mulMod(w, pp.N);
+        uint256[4] memory rhs = pp.y
+            .expMod(s, pp.N)
+            .mulMod(w, pp.N)
+            .normalize(pp.N);
         if (!Z.v.eq(rhs)) {
             revert InvalidPuzzleSolution();
         }
@@ -199,16 +238,18 @@ contract HomomorphicTimeLockVote {
         uint256 l = PoE.l;
         LibPrime.checkHashToPrime(abi.encode(u, w, parametersHash, PoE.j), l);
 
-        uint256 r = _expmod(2, pp.T, l); // r = 2^T (mod l)
+        uint256 r = _expMod(2, pp.T, l); // r = 2^T (mod l)
         // Check w = π^l * u^r
-        uint256[4] memory rhs = PoE.pi.expMod(l, pp.N)
-            .mulMod(u.expMod(r, pp.N), pp.N);
+        uint256[4] memory rhs = PoE.pi
+            .expMod(l, pp.N)
+            .mulMod(u.expMod(r, pp.N), pp.N)
+            .normalize(pp.N);
         if (!w.eq(rhs)) {
             revert InvalidProofOfExponentiation();
         }
     }
 
-    function _expmod(uint256 base, uint256 exponent, uint256 modulus)
+    function _expMod(uint256 base, uint256 exponent, uint256 modulus)
         private
         view
         returns (uint256 result)
@@ -216,7 +257,7 @@ contract HomomorphicTimeLockVote {
         assembly { 
             // Get free memory pointer
             let p := mload(0x40)
-            // Store parameters for the Expmod (0x05) precompile
+            // Store parameters for the EXPMOD (0x05) precompile
             mstore(p, 0x20)                    // Length of Base
             mstore(add(p, 0x20), 0x20)         // Length of Exponent
             mstore(add(p, 0x40), 0x20)         // Length of Modulus
