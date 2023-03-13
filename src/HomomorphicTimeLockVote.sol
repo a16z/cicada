@@ -44,7 +44,22 @@ contract HomomorphicTimeLockVote {
         uint64 numVotes;
         uint64 startTime;
         uint64 endTime;
+        bool isFinalized;
     }
+
+    event VoteCreated(
+        uint256 voteId,
+        string description,
+        uint64 startTime,
+        uint64 endTime,
+        PublicParameters pp
+    );
+
+    event VoteFinalized(
+        uint256 voteId,
+        uint64 numYesVotes,
+        uint64 numNoVotes
+    );
     
     error InvalidProofOfExponentiation();
     error InvalidPuzzleSolution();
@@ -59,7 +74,7 @@ contract HomomorphicTimeLockVote {
         uint64 startTime,
         uint64 votingPeriod
     )
-        public
+        external
     {
         // TODO: Validate g and y generated via Fiat-Shamir? 
         //       Validate h = g^(2^T)?
@@ -72,7 +87,8 @@ contract HomomorphicTimeLockVote {
             revert();
         }
 
-        Vote storage newVote = votes[nextVoteId++];
+        uint256 voteId = nextVoteId++;
+        Vote storage newVote = votes[voteId];
         newVote.parametersHash = keccak256(abi.encode(pp));
 
         // This instantiates the tally to 0:
@@ -89,16 +105,25 @@ contract HomomorphicTimeLockVote {
             revert();
         }
         newVote.startTime = startTime;
-        newVote.endTime = startTime + votingPeriod;
+        uint64 endTime = startTime + votingPeriod;
+        newVote.endTime = endTime;
+
+        emit VoteCreated(
+            voteId,
+            description,
+            startTime,
+            endTime,
+            pp
+        );
     }
 
     function castBallot(
         uint256 voteId,
-        PublicParameters memory pp,
-        Puzzle memory ballot,
-        ProofOfValidity memory PoV
+        PublicParameters calldata pp,
+        Puzzle calldata ballot,
+        ProofOfValidity calldata PoV
     )
-        public
+        external
     {
         Vote storage vote = votes[voteId];
         if (
@@ -111,29 +136,56 @@ contract HomomorphicTimeLockVote {
         if (parametersHash != vote.parametersHash) {
             revert();
         }
-        verifyBallotValidity(pp, parametersHash, ballot, PoV);
+        _verifyBallotValidity(pp, parametersHash, ballot, PoV);
         vote.numVotes++;
-        updateTally(pp, vote.tally, ballot);
+        _updateTally(pp, vote.tally, ballot);
     }
 
-    function updateTally(
-        PublicParameters memory pp,
-        Puzzle storage tally,
-        Puzzle memory vote
+    function finalizeVote(
+        uint256 voteId,
+        PublicParameters calldata pp,
+        uint64 tallyPlaintext,
+        uint256[4] calldata w,
+        ProofOfExponentiation calldata PoE
     )
-        private
+        external
     {
-        tally.u = tally.u.mulMod(vote.u, pp.N).normalize(pp.N);
-        tally.v = tally.v.mulMod(vote.v, pp.N).normalize(pp.N);
+        Vote storage vote = votes[voteId];        
+        if (block.timestamp < vote.endTime) {
+            revert();
+        }
+        bytes32 parametersHash = keccak256(abi.encode(pp));
+        if (parametersHash != vote.parametersHash) {
+            revert();
+        }
+        if (vote.isFinalized) {
+            revert();
+        }
+
+        _verifySolutionCorrectness(
+            pp,
+            vote.tally,
+            tallyPlaintext,
+            w,
+            PoE
+        );
+
+        vote.isFinalized = true;
+
+        emit VoteFinalized(
+            voteId,
+            tallyPlaintext,
+            vote.numVotes - tallyPlaintext
+        );
     }
 
-    function verifyBallotValidity(
+    function _verifyBallotValidity(
         PublicParameters memory pp,
         bytes32 parametersHash,
         Puzzle memory Z,
         ProofOfValidity memory PoV
     )
-        public
+        internal
         view
     {
         PoV.a_0 = PoV.a_0.normalize(pp.N);
@@ -141,6 +193,7 @@ contract HomomorphicTimeLockVote {
         PoV.a_1 = PoV.a_1.normalize(pp.N);
         PoV.b_1 = PoV.b_1.normalize(pp.N);
 
+        // Fiat-Shamir
         uint256 c = uint256(keccak256(abi.encode(
             PoV.a_0,
             PoV.b_0,
@@ -148,6 +201,13 @@ contract HomomorphicTimeLockVote {
             PoV.b_1,
             parametersHash
         )));
+        // OR composition of two DLOG equality sigma protocols:
+        //     DLOG_g(u) = DLOG_h(v) OR DLOG_g(u) = DLOG(v / y)
+        // This is equivalent to proving that there exists some
+        // value r such that:
+        //     (u = g^r AND v = h^r) OR (u = v^r AND v = h^r * y)
+        // where the former case represents a "no" ballot and the
+        // latter case represents a "yes" ballot.
         unchecked {
             if (PoV.c_0 + PoV.c_1 != c) {
                 revert InvalidBallot();
@@ -200,20 +260,20 @@ contract HomomorphicTimeLockVote {
         }
     }
 
-    function verifySolutionCorrectness(
+    // Verifies that `s` is the plaintext value encoded in the 
+    // homomorphic timelock puzzle `Z`. 
+    function _verifySolutionCorrectness(
         PublicParameters memory pp,
         Puzzle memory Z,
         uint256 s,
         uint256[4] memory w,
         ProofOfExponentiation memory PoE
     )
-        public
+        internal
         view
     {
-        w = w.normalize(pp.N);
-
         bytes32 parametersHash = keccak256(abi.encode(pp));
-        verifyExponentiation(pp, parametersHash, Z.u, w, PoE);
+        _verifyExponentiation(pp, parametersHash, Z.u, w, PoE);
 
         // Check v = w * y^s (mod N)
         uint256[4] memory rhs = pp.y
@@ -225,16 +285,20 @@ contract HomomorphicTimeLockVote {
         }
     }
 
-    function verifyExponentiation(
+    // Verifies the Wesolowski proof of exponentiation that:
+    //     u^(2^T) = w (mod N)
+    function _verifyExponentiation(
         PublicParameters memory pp,
         bytes32 parametersHash,
         uint256[4] memory u,
         uint256[4] memory w,
         ProofOfExponentiation memory PoE
     )
-        internal
+        private
         view
     {
+        w = w.normalize(pp.N);
+        // Fiat-Shamir random prime
         uint256 l = PoE.l;
         LibPrime.checkHashToPrime(abi.encode(u, w, parametersHash, PoE.j), l);
 
@@ -249,6 +313,19 @@ contract HomomorphicTimeLockVote {
         }
     }
 
+    // Homomorphically adds the ballot value to the tally.
+    function _updateTally(
+        PublicParameters memory pp,
+        Puzzle storage tally,
+        Puzzle memory ballot
+    )
+        private
+    {
+        tally.u = tally.u.mulMod(ballot.u, pp.N).normalize(pp.N);
+        tally.v = tally.v.mulMod(ballot.v, pp.N).normalize(pp.N);
+    }
+
+    // Computes (base ** exponent) % modulus
     function _expMod(uint256 base, uint256 exponent, uint256 modulus)
         private
         view

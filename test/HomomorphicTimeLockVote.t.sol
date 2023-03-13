@@ -302,9 +302,7 @@ contract HomomorphicTimeLockVoteTest is Test {
         // s=0 ballot
         vote.castBallot(1, pp, Z, PoV);
 
-        (, HomomorphicTimeLockVote.Puzzle memory tally,,,) = vote.votes(1);
-
-        uint256 s = 2; // two 1 ballots + three 0 ballots
+        uint64 s = 2; // two 1 ballots + three 0 ballots
         uint256[4] memory w = [
             24377100417841368779428648785521133982831968975092502424061349681002171620991,
             4077796762834673158323034097331602200483637878808238328480010541929097435188,
@@ -321,8 +319,9 @@ contract HomomorphicTimeLockVoteTest is Test {
         ];
         PoE.j = 109;
         PoE.l = 114297739051938986507376767718465427606631014087600825534715685279252968842727;        
-        
-        vote.verifySolutionCorrectness(pp, tally, s, w, PoE);        
+
+        vm.warp(block.timestamp + 5 days);
+        vote.finalizeVote(1, pp, s, w, PoE);        
     }
 
     function _getPublicParameters()

@@ -5,13 +5,29 @@ import '../src/HomomorphicTimeLockVote.sol';
 import '../src/LibUint1024.sol';
 
 
+contract VoteWrapper is HomomorphicTimeLockVote {
+
+    function verifyBallotValidity(
+        PublicParameters calldata pp,
+        bytes32 parametersHash,
+        Puzzle calldata Z,
+        ProofOfValidity calldata PoV
+    )
+        external
+        view
+    {
+        _verifyBallotValidity(pp, parametersHash, Z, PoV);
+    }
+}
+
+
 contract VerifyBallotGeneratedTest is Test {
     using LibUint1024 for *;
 
-    HomomorphicTimeLockVote vote;
+    VoteWrapper vote;
 
     function setUp() external {
-        vote = new HomomorphicTimeLockVote();
+        vote = new VoteWrapper();
     }
 
     function testVerifyBallot1()
