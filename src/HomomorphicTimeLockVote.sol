@@ -64,6 +64,11 @@ contract HomomorphicTimeLockVote {
     error InvalidProofOfExponentiation();
     error InvalidPuzzleSolution();
     error InvalidBallot();
+    error InvalidStartTime();
+    error VoteIsNotOngoing();
+    error VoteHasNotEnded();
+    error VoteAlreadyFinalized();
+    error ParametersHashMismatch();
 
     uint256 public nextVoteId = 1;
     mapping(uint256 => Vote) public votes;
@@ -102,7 +107,7 @@ contract HomomorphicTimeLockVote {
         if (startTime == 0) {
             startTime = uint64(block.timestamp);
         } else if (startTime < block.timestamp) {
-            revert();
+            revert InvalidStartTime();
         }
         newVote.startTime = startTime;
         uint64 endTime = startTime + votingPeriod;
@@ -130,11 +135,11 @@ contract HomomorphicTimeLockVote {
             block.timestamp < vote.startTime || 
             block.timestamp > vote.endTime
         ) {
-            revert();
+            revert VoteIsNotOngoing();
         }
         bytes32 parametersHash = keccak256(abi.encode(pp));
         if (parametersHash != vote.parametersHash) {
-            revert();
+            revert ParametersHashMismatch();
         }
         _verifyBallotValidity(pp, parametersHash, ballot, PoV);
         vote.numVotes++;
@@ -152,14 +157,14 @@ contract HomomorphicTimeLockVote {
     {
         Vote storage vote = votes[voteId];        
         if (block.timestamp < vote.endTime) {
-            revert();
+            revert VoteHasNotEnded();
         }
         bytes32 parametersHash = keccak256(abi.encode(pp));
         if (parametersHash != vote.parametersHash) {
-            revert();
+            revert ParametersHashMismatch();
         }
         if (vote.isFinalized) {
-            revert();
+            revert VoteAlreadyFinalized();
         }
 
         _verifySolutionCorrectness(
@@ -179,6 +184,13 @@ contract HomomorphicTimeLockVote {
         );
     }
 
+    // OR composition of two DLOG equality sigma protocols:
+    //     DLOG_g(u) = DLOG_h(v) OR DLOG_g(u) = DLOG(v / y)
+    // This is equivalent to proving that there exists some
+    // value r such that:
+    //     (u = g^r AND v = h^r) OR (u = v^r AND v = h^r * y)
+    // where the former case represents a "no" ballot and the
+    // latter case represents a "yes" ballot.
     function _verifyBallotValidity(
         PublicParameters memory pp,
         bytes32 parametersHash,
@@ -201,19 +213,15 @@ contract HomomorphicTimeLockVote {
             PoV.b_1,
             parametersHash
         )));
-        // OR composition of two DLOG equality sigma protocols:
-        //     DLOG_g(u) = DLOG_h(v) OR DLOG_g(u) = DLOG(v / y)
-        // This is equivalent to proving that there exists some
-        // value r such that:
-        //     (u = g^r AND v = h^r) OR (u = v^r AND v = h^r * y)
-        // where the former case represents a "no" ballot and the
-        // latter case represents a "yes" ballot.
+
+        // c_0 + c_1 = c (mod 2^256)
         unchecked {
             if (PoV.c_0 + PoV.c_1 != c) {
                 revert InvalidBallot();
             }
         }
 
+        // g^t_0 = a_0 * u^c_0 (mod N)
         uint256[4] memory lhs = pp.g
             .expMod(PoV.t_0, pp.N)
             .normalize(pp.N);
@@ -225,6 +233,7 @@ contract HomomorphicTimeLockVote {
             revert InvalidBallot();
         }
 
+        // h^t_0 = b_0 * v^c_0 (mod N)
         lhs = pp.h
             .expMod(PoV.t_0, pp.N)
             .normalize(pp.N);
@@ -236,6 +245,7 @@ contract HomomorphicTimeLockVote {
             revert InvalidBallot();
         }
 
+        // g^t_1 = a_1 * u^c_1 (mod N)
         lhs = pp.g
             .expMod(PoV.t_1, pp.N)
             .normalize(pp.N);
@@ -247,6 +257,7 @@ contract HomomorphicTimeLockVote {
             revert InvalidBallot();
         }
 
+        // h^t_1 = b_1 * (v * y^(-1))^c_1 (mod N)
         lhs = pp.h
             .expMod(PoV.t_1, pp.N)
             .normalize(pp.N);
