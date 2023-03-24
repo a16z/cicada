@@ -1,0 +1,250 @@
+pragma solidity ^0.8;
+
+library LibUint{{ num_words * 256 }} {
+    using LibUint{{ num_words * 256 }} for *;
+
+    error Overflow(uint256[{{ num_words }}] a, uint256[{{ num_words }}] b);
+    error Underflow(uint256[{{ num_words }}] a, uint256[{{ num_words }}] b);
+
+    function toUint{{ num_words * 256 }}(uint256 x)
+        internal 
+        pure 
+        returns (uint256[{{ num_words }}] memory bn) 
+    {
+        bn[{{ num_words - 1 }}] = x;
+    }
+
+    function add(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b) 
+        internal 
+        pure
+        returns (uint256[{{ num_words }}] memory c)
+    {
+        uint256 carry;
+        (c, carry) = _add(a, b);
+        if (carry != 0) {
+            revert Overflow(a, b);
+        }
+    }
+
+    function sub(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b) 
+        internal 
+        pure
+        returns (uint256[{{ num_words }}] memory c)
+    {
+        uint256 carry;
+        (c, carry) = _sub(a, b);
+        if (carry != 0) {
+            revert Underflow(a, b);
+        }
+    }
+
+    function _add(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b) 
+        private 
+        pure
+        returns (uint256[{{ num_words }}] memory c, uint256 carry)
+    {
+        assembly {
+            let aWord := mload(add(a, {{ '0x%x' % ((num_words - 1) * 32) }}))
+            let bWord := mload(add(b, {{ '0x%x' % ((num_words - 1) * 32) }}))
+            let sum := add(aWord, bWord)
+            mstore(add(c, {{ '0x%x' % ((num_words - 1) * 32) }}), sum)
+            carry := lt(sum, aWord)
+            {% for i in range(num_words - 2, -1, -1) %}
+
+            aWord := mload({% if i == 0 %}a{% else %}add(a, {{ '0x%x' % (i * 32) }}){% endif %})
+            bWord := mload({% if i == 0 %}b{% else %}add(b, {{ '0x%x' % (i * 32) }}){% endif %})
+            sum := add(aWord, bWord)
+            {% if i == num_words - 2 %}
+            let cWord := add(sum, carry)
+            {% else %}
+            cWord := add(sum, carry)
+            {% endif %}
+            mstore({% if i == 0 %}c{% else %}add(c, {{ '0x%x' % (i * 32) }}){% endif %}, cWord)
+            carry := or(lt(sum, aWord), lt(cWord, sum))
+            {% endfor %}
+        }
+    }
+
+    function _sub(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b) 
+        private 
+        pure
+        returns (uint256[{{ num_words }}] memory c, uint256 carry)
+    {
+        assembly {
+            let aWord := mload(add(a, {{ '0x%x' % ((num_words - 1) * 32) }}))
+            let bWord := mload(add(b, {{ '0x%x' % ((num_words - 1) * 32) }}))
+            let diff := sub(aWord, bWord)
+            mstore(add(c, {{ '0x%x' % ((num_words - 1) * 32) }}), diff)
+            carry := lt(aWord, bWord)
+            {% for i in range(num_words - 2, -1, -1) %}
+
+            aWord := mload({% if i == 0 %}a{% else %}add(a, {{ '0x%x' % (i * 32) }}){% endif %})
+            bWord := mload({% if i == 0 %}b{% else %}add(b, {{ '0x%x' % (i * 32) }}){% endif %})
+            diff := sub(aWord, bWord)
+            mstore({% if i == 0 %}c{% else %}add(c, {{ '0x%x' % (i * 32) }}){% endif %}, sub(diff, carry))
+            carry := or(lt(aWord, bWord), lt(diff, carry))
+            {% endfor %}
+        }
+    }
+
+    function eq(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b)
+        internal
+        pure
+        returns (bool)
+    {
+        return
+            {% for i in range(num_words - 1) %}
+            a[{{ i }}] == b[{{ i }}] &&
+            {% endfor %}
+            a[{{ num_words - 1 }}] == b[{{ num_words - 1 }}];
+    }
+
+    function gt(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b)
+        internal
+        pure
+        returns (bool)
+    {
+        return _gt(a, b, false);
+    }
+
+    function gte(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b)
+        internal
+        pure
+        returns (bool)
+    {
+        return _gt(a, b, true);
+    }
+
+    function _gt(
+        uint256[{{ num_words }}] memory a, 
+        uint256[{{ num_words }}] memory b, 
+        bool trueIfEqual
+    )
+        private
+        pure
+        returns (bool)
+    {
+        {% for i in range(num_words - 1) %}
+        if (a[{{ i }}] < b[{{ i }}]) {
+            return false;
+        } else if (a[{{ i }}] > b[{{ i }}]) {
+            return true;
+        }        
+        {% endfor %}
+        if (a[{{ num_words - 1 }}] < b[{{ num_words - 1 }}]) {
+            return false;
+        }
+        return trueIfEqual || a[{{ num_words - 1 }}] > b[{{ num_words - 1 }}];
+    }
+
+    function lt(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b)
+        internal
+        pure
+        returns (bool)
+    {
+        return _lt(a, b, false);
+    }
+
+    function lte(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b)
+        internal
+        pure
+        returns (bool)
+    {
+        return _lt(a, b, true);
+    }
+
+    function _lt(
+        uint256[{{ num_words }}] memory a, 
+        uint256[{{ num_words }}] memory b, 
+        bool trueIfEqual
+    )
+        private
+        pure
+        returns (bool)
+    {
+        {% for i in range(num_words - 1) %}
+        if (a[{{ i }}] > b[{{ i }}]) {
+            return false;
+        } else if (a[{{ i }}] < b[{{ i }}]) {
+            return true;
+        }        
+        {% endfor %}
+        if (a[{{ num_words - 1 }}] > b[{{ num_words - 1 }}]) {
+            return false;
+        }
+        return trueIfEqual || a[{{ num_words - 1 }}] < b[{{ num_words - 1 }}];
+    }
+
+    function mulMod(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b, uint256[{{ num_words }}] memory modulus)
+        internal
+        view
+        returns (uint256[{{ num_words }}] memory result)
+    {
+        uint256[{{ num_words }}] memory sumSquared = a.addMod(b, modulus).expMod(2, modulus);
+        uint256[{{ num_words }}] memory differenceSquared = a.subMod(b, modulus).expMod(2, modulus);
+        // Returns (a+b)^2 - (a-b)^2 = 4ab
+        return sumSquared.subMod(differenceSquared, modulus);
+    }
+
+    function addMod(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b, uint256[{{ num_words }}] memory modulus)
+        internal
+        pure
+        returns (uint256[{{ num_words }}] memory result)
+    {
+        uint256 carry;
+        (result, carry) = _add(a, b);
+        if (carry == 1 || result.gte(modulus)) {
+            (result, ) = _sub(result, modulus);
+        }
+    }
+
+    function subMod(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b, uint256[{{ num_words }}] memory modulus)
+        internal
+        pure
+        returns (uint256[{{ num_words }}] memory result)
+    {
+        if (a.gte(b)) {
+            return a.sub(b);
+        } else {
+            return modulus.sub(b.sub(a));
+        }
+    }
+
+    function expMod(uint256[{{ num_words }}] memory base, uint256 exponent, uint256[{{ num_words }}] memory modulus)
+        internal
+        view
+        returns (uint256[{{ num_words }}] memory result)
+    {
+        if (exponent == 0) {
+            return uint256(1).toUint{{ num_words * 256 }}();
+        }
+
+        assembly {
+            // Get free memory pointer
+            let p := mload(0x40)
+
+            // Store parameters for the Expmod (0x05) precompile
+            mstore(p, {{ '0x%x' % (num_words * 32) }})               // Length of base ({{ num_words }} * 32 = {{ num_words * 32 }} bytes)
+            mstore(add(p, 0x20), 0x20)     // Length of exponent
+            mstore(add(p, 0x40), {{ '0x%x' % (num_words * 32) }})    // Length of modulus ({{ num_words }} * 32 = {{ num_words * 32 }} bytes)
+
+            // Use Identity (0x04) precompile to memcpy the base
+            if iszero(staticcall(gas(), 0x04, base, {{ '0x%x' % (num_words * 32) }}, add(p, 0x60), {{ '0x%x' % (num_words * 32) }})) {
+                revert(0, 0)
+            }
+            // Store the exponent
+            mstore(add(p, {{ '0x%x' % ((num_words + 3) * 32) }}), exponent)
+            // Use Identity (0x04) precompile to memcpy the modulus
+            if iszero(staticcall(gas(), 0x04, modulus, {{ '0x%x' % (num_words * 32) }}, add(p, {{ '0x%x' % ((num_words + 4) * 32) }}), {{ '0x%x' % (num_words * 32) }})) {
+                revert(0, 0)
+            }
+            // Call 0x05 (EXPMOD) precompile
+            if iszero(staticcall(gas(), 0x05, p, {{ '0x%x' % ((num_words * 2 + 4) * 32) }}, result, {{ '0x%x' % (num_words * 32) }})) {
+                revert(0, 0)
+            }
+
+            // Update free memory pointer
+            mstore(0x40, add(p, {{ '0x%x' % ((num_words * 2 + 4) * 32) }}))
+        }
+    }
+}

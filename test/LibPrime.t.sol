@@ -35,6 +35,22 @@ contract LibPrimeWrapper {
     {
         return LibPrime.bailliePSW(n);
     }
+
+    function bitLen(uint256 x)
+        external
+        pure
+        returns (uint256 z)
+    {
+        return LibPrime.bitLen(x);
+    }
+
+    function trailingZeros(uint256 x)
+        external
+        pure
+        returns (uint256 z)
+    {
+        return LibPrime.trailingZeros(x);
+    }
 }
 
 contract LibPrimeTest is Test {
@@ -198,5 +214,57 @@ contract LibPrimeTest is Test {
             9341551731633778114822211379357199272851770827068248495866801830534051079929,
             certificate
         ));
+    }
+
+    function testBitLen(uint256 x)
+        external
+    {
+        vm.assume(x != 0);
+        assertEq(lib.bitLen(x), _bitLenRef(x));
+    }
+
+    function testTrailingZeros(uint256 x)
+        external
+    {
+        vm.assume(x != 0);
+        assertEq(lib.trailingZeros(x), _trailingZerosRef(x));
+    }
+
+    function proveBitLen(uint256 x)
+        external
+    {
+        require(x != 0);
+        assert(_bitLenRef(x) == LibPrime.bitLen(x));
+    }
+
+    function proveTrailingZeros(uint256 x)
+        external
+    {
+        require(x != 0);
+        assert(_trailingZerosRef(x) == LibPrime.trailingZeros(x));
+    }
+
+    // ================================================================    
+    
+    function _bitLenRef(uint256 x)
+        private
+        pure
+        returns (uint256 z)
+    {
+        while (x != 0) {
+            z++;
+            x >>= 1;
+        }
+    }
+
+    function _trailingZerosRef(uint256 x)
+        private
+        pure
+        returns (uint256 z)
+    {
+        while(1 & x == 0) {
+            z++;
+            x >>= 1;
+        }
     }
 }

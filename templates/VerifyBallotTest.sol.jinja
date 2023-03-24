@@ -1,0 +1,94 @@
+    function testVerifyBallot{{ i }}()
+        external
+        view
+    {
+        HomomorphicTimeLockVote.PublicParameters memory pp;
+        pp.N = [
+            {% for element in N %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.T = {{ T }};
+        pp.g = [
+            {% for element in g %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.h = [
+            {% for element in h %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.y = [
+            {% for element in y %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.yInv = [
+            {% for element in yInv %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+
+        HomomorphicTimeLockVote.Puzzle memory Z;
+        Z.u = [
+            {% for element in u %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        Z.v = [
+            {% for element in v %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+
+        HomomorphicTimeLockVote.ProofOfValidity memory PoV;
+        PoV.a_0 = [
+            {% for element in a0 %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        PoV.b_0 = [
+            {% for element in b0 %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        PoV.t_0 = [
+            {% for element in t0 %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        PoV.c_0 = {{ c0 }};
+
+        PoV.a_1 = [
+            {% for element in a1 %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        PoV.b_1 = [
+            {% for element in b1 %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        PoV.t_1 = [
+            {% for element in t1 %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        PoV.c_1 = {{ c1 }};
+
+        vote.verifyBallotValidity(pp, keccak256(abi.encode(pp)), Z, PoV);
+    }

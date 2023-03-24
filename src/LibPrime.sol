@@ -3,6 +3,11 @@ pragma solidity ^0.8;
 
 library LibPrime {
 
+    // A bitmask for testing membership in the set of the first 96 odd primes. 
+    // A bit vector contains elements in [0, 255]. Since all primes (other than 2)
+    // are odd, we know the last bit will be 1. So if we first check the parity of
+    // the candidate prime, we can drop the last bit and thus check all primes from
+    // [3, 511] in this bitvector. 
     uint256 private constant PRIMES_BIT_MASK = 
         (1 << (3 >> 1))   | (1 << (5 >> 1))   | (1 << (7 >> 1))   | (1 << (11 >> 1))  |
         (1 << (13 >> 1))  | (1 << (17 >> 1))  | (1 << (19 >> 1))  | (1 << (23 >> 1))  |
@@ -29,6 +34,8 @@ library LibPrime {
         (1 << (463 >> 1)) | (1 << (467 >> 1)) | (1 << (479 >> 1)) | (1 << (487 >> 1)) |
         (1 << (491 >> 1)) | (1 << (499 >> 1)) | (1 << (503 >> 1)) | (1 << (509 >> 1));
 
+    uint256 private constant HIGH_BIT = 1 << 255;
+
     struct PocklingtonNums {
         uint256 p;
         uint256 a;
@@ -41,6 +48,32 @@ library LibPrime {
         PocklingtonNums[] nums;
     }
 
+    error InvalidHashToPrime(
+        bytes input,
+        uint256 prime
+    );
+
+    // Based on Dankrad Feist's implementation:
+    // https://github.com/dankrad/rsa-bounty/blob/master/contract/rsa_bounty.sol
+    function checkHashToPrime(
+        bytes memory input,
+        uint256 prime
+    )
+        internal
+        view
+    {
+        uint256 hashedInput = uint256(keccak256(input));
+        if (hashedInput | HIGH_BIT != prime) {
+            revert InvalidHashToPrime(input, prime);
+        }
+        if (!bailliePSW(prime)) {
+            revert InvalidHashToPrime(input, prime);
+        }
+    }
+
+    // https://en.wikipedia.org/wiki/Baillie%E2%80%93PSW_primality_test
+    // The Baillie-PSW primality test has no known pseudoprimes,
+    // though it's conjectured that there are infinitely many. 
     function bailliePSW(uint256 n)
         internal
         view
@@ -49,6 +82,9 @@ library LibPrime {
         return lucas(n) && _millerRabinBase2(n);
     }
 
+    // https://en.wikipedia.org/wiki/Lucas_primality_test
+    // Based on the Go implementation:
+    // https://github.com/golang/go/blob/master/src/math/big/prime.go
     function lucas(uint256 n)
         internal
         pure
@@ -135,10 +171,15 @@ library LibPrime {
         return false;
     }
 
-    bytes32 constant HIGHEST_BIT_DE_BRUIJN_TABLE = 0x0009010a0d15021d0b0e10121619031e080c141c0f111807131b17061a05041f;
+    bytes32 constant HIGHEST_BIT_DE_BRUIJN_TABLE = 0x010a020b0e16031e0c0f1113171a041f090d151d10121908141c18071b060520;
     uint256 constant HIGHEST_BIT_DE_BRUIJN_SEQUENCE = 130329821;
+
+    // A hybrid of the binary search appraoch and the de Bruijn approach
+    // described here: https://graphics.stanford.edu/~seander/bithacks.html#IntegerLogDeBruijn
+    // Note that bitlen(x) == log2(x) + 1, so the de Bruijn table values 
+    // are shifted by 1.
     function bitLen(uint256 v)
-        private
+        internal
         pure
         returns (uint256 r)
     {
@@ -171,8 +212,11 @@ library LibPrime {
 
     bytes32 constant LOWEST_BIT_DE_BRUIJN_TABLE = 0x00011c021d0e18031e16140f191104081f1b0d17151310071a0c12060b050a09;
     uint256 constant LOWEST_BIT_DE_BRUIJN_SEQUENCE = 125613361;
+
+    // A hybrid of the binary search appraoch and the de Bruijn approach
+    // described here: https://graphics.stanford.edu/~seander/bithacks.html#ZerosOnRightMultLookup
     function trailingZeros(uint256 v)
-        private
+        internal
         pure
         returns (uint256 r)
     {
@@ -197,6 +241,7 @@ library LibPrime {
         }
     }
 
+    // Returns the Jacobi symbol (d / n)
     function jacobi(uint256 d, uint256 n)
         internal
         pure
@@ -228,6 +273,10 @@ library LibPrime {
         }
     }
 
+    // Returns true if `certificate` is a valid Pocklington certificate 
+    // of primality. Providing a valid certificate guarantees that `n`
+    // is prime, whereas the primality tests in this library are probabilistic.
+    // https://en.wikipedia.org/wiki/Pocklington_primality_test
     function pocklington(uint256 n, PocklingtonStep[] memory certificate) 
         internal 
         view 
@@ -255,7 +304,7 @@ library LibPrime {
         assembly {
             // Load free memory pointer
             let p := mload(0x40)
-            // Store parameters for the Expmod (0x05) precompile
+            // Store parameters for the EXPMOD precompile
             mstore(p, 0x20)                  // Length of base 
             mstore(add(p, 0x20), 0x20)       // Length of exponent
             mstore(add(p, 0x40), 0x20)       // Length of modulus 
@@ -337,6 +386,7 @@ library LibPrime {
         return true;
     }
 
+    // Returns true iff `a` and `b` are coprime.
     function coprime(uint256 a, uint256 b)
         internal
         pure
@@ -385,7 +435,7 @@ library LibPrime {
                 mstore(0x20, blockhash(sub(number(), 1)))
                 // Get free memory pointer
                 memPtr := mload(0x40)
-                // Store parameters for the Expmod (0x05) precompile
+                // Store parameters for the EXPMOD precompile
                 mstore(memPtr, 0x20)             // Length of Base
                 mstore(add(memPtr, 0x20), 0x20)  // Length of Exponent
                 mstore(add(memPtr, 0x40), 0x20)  // Length of Modulus
@@ -429,6 +479,7 @@ library LibPrime {
         }
     }
 
+    // Miller-Rabin with a fixed base of 2, used in Baillie-PSW
     function _millerRabinBase2(uint256 n)
         private
         view
@@ -453,7 +504,7 @@ library LibPrime {
             assembly { 
                 // Get free memory pointer
                 let p := mload(0x40)
-                // Store parameters for the Expmod (0x05) precompile
+                // Store parameters for the EXPMOD precompile
                 mstore(p, 0x20)             // Length of Base
                 mstore(add(p, 0x20), 0x20)  // Length of Exponent
                 mstore(add(p, 0x40), 0x20)  // Length of Modulus
@@ -483,6 +534,9 @@ library LibPrime {
         }
     }
 
+    // Calls the EXPMOD precompile assuming the parameters lengths (base, 
+    // exponent, and modulus are 32 bytes each) have already been mstore'd
+    // in the appropriate places.
     function _pocklingtonExpMod(uint256 base, uint256 exponent, uint256 modulus)
         private
         view
@@ -492,7 +546,7 @@ library LibPrime {
             // Get free memory pointer
             let p := mload(0x40)
 
-            // Store parameters for the Expmod (0x05) precompile
+            // Store parameters for the EXPMOD precompile
             mstore(add(p, 0x60), base)       // Store the base
             mstore(add(p, 0x80), exponent)   // Store the exponent
             mstore(add(p, 0xa0), modulus)   // Store the modulus
@@ -512,8 +566,11 @@ library LibPrime {
         if (n == 2) {
             return true;
         } else if (n & 1 == 0) {
+            // All other even numbers are composite.
             return false;
         }
+        // At this point we know `n` is odd, so we can drop the last bit and
+        // check whether `n` is in the first 96 odd primes using our bitmask. 
         return (1 << (n >> 1)) & PRIMES_BIT_MASK != 0;        
     }
 }
