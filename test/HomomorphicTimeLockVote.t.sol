@@ -5,13 +5,49 @@ import '../src/HomomorphicTimeLockVote.sol';
 import '../src/LibUint1024.sol';
 
 
+contract VoteWrapper is HomomorphicTimeLockVote {
+    function createVote(
+        HomomorphicTimeLockVote.PublicParameters memory pp,
+        string memory description,
+        uint64 startTime,
+        uint64 votingPeriod
+    )
+        external
+    {
+        _createVote(pp, description, startTime, votingPeriod);
+    }
+
+    function castBallot(
+        uint256 voteId,
+        HomomorphicTimeLockVote.PublicParameters memory pp,
+        HomomorphicTimeLockVote.Puzzle memory ballot,
+        HomomorphicTimeLockVote.ProofOfValidity memory PoV
+    )
+        external
+    {
+        _castBallot(voteId, pp, ballot, PoV);
+    }
+
+    function finalizeVote(
+        uint256 voteId,
+        HomomorphicTimeLockVote.PublicParameters memory pp,
+        uint64 tallyPlaintext,
+        uint256[4] memory w,
+        HomomorphicTimeLockVote.ProofOfExponentiation memory PoE
+    )
+        external
+    {
+        _finalizeVote(voteId, pp, tallyPlaintext, w, PoE);
+    }
+}
+
 contract HomomorphicTimeLockVoteTest is Test {
     using LibUint1024 for *;
 
-    HomomorphicTimeLockVote vote;
+    VoteWrapper vote;
 
     function setUp() external {
-        vote = new HomomorphicTimeLockVote();
+        vote = new VoteWrapper();
         vote.createVote(_getPublicParameters(), "test", 0, 5 days);
     }
 

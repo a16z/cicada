@@ -73,13 +73,13 @@ contract HomomorphicTimeLockVote {
     uint256 public nextVoteId = 1;
     mapping(uint256 => Vote) public votes;
 
-    function createVote(
+    function _createVote(
         PublicParameters memory pp,
-        string calldata description,
+        string memory description,
         uint64 startTime,
         uint64 votingPeriod
     )
-        external
+        internal
     {
         // TODO: Validate g and y generated via Fiat-Shamir? 
         //       Validate h = g^(2^T)?
@@ -122,13 +122,13 @@ contract HomomorphicTimeLockVote {
         );
     }
 
-    function castBallot(
+    function _castBallot(
         uint256 voteId,
-        PublicParameters calldata pp,
-        Puzzle calldata ballot,
-        ProofOfValidity calldata PoV
+        PublicParameters memory pp,
+        Puzzle memory ballot,
+        ProofOfValidity memory PoV
     )
-        external
+        internal
     {
         Vote storage vote = votes[voteId];
         if (
@@ -146,14 +146,14 @@ contract HomomorphicTimeLockVote {
         _updateTally(pp, vote.tally, ballot);
     }
 
-    function finalizeVote(
+    function _finalizeVote(
         uint256 voteId,
-        PublicParameters calldata pp,
+        PublicParameters memory pp,
         uint64 tallyPlaintext,
-        uint256[4] calldata w,
-        ProofOfExponentiation calldata PoE
+        uint256[4] memory w,
+        ProofOfExponentiation memory PoE
     )
-        external
+        internal
     {
         Vote storage vote = votes[voteId];        
         if (block.timestamp < vote.endTime) {
