@@ -314,7 +314,7 @@ contract HomomorphicTimeLockVote {
         LibPrime.checkHashToPrime(abi.encode(u, w, parametersHash, PoE.j), l);
 
         uint256 r = _expMod(2, pp.T, l); // r = 2^T (mod l)
-        // Check w = π^l * u^r
+        // Check w = π^l * u^r (mod N)
         uint256[4] memory rhs = PoE.pi
             .expMod(l, pp.N)
             .mulMod(u.expMod(r, pp.N), pp.N)
