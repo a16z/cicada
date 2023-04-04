@@ -1,6 +1,18 @@
 # Cicada
 
-Cicada is a private onchain voting protocol based on [homomorphic time-lock puzzles](https://eprint.iacr.org/2019/635.pdf). 
+Cicada is a private on-chain voting protocol based on [homomorphic time-lock puzzles](https://eprint.iacr.org/2019/635.pdf). 
+
+## Quickstart
+
+Requires [Foundry](https://book.getfoundry.sh/getting-started/installation).
+
+Install: `forge install`
+
+Build: `forge build`
+
+Differential tests: `forge test --match-test testRef --ffi`
+
+Other tests: `forge test --no-match-test testRef`
 
 ## How it works
 
@@ -46,7 +58,7 @@ $$\text{tally}_\text{ct}.u := g^1 = g \mod{N}$$
 
 $$\text{tally}_\text{ct}.v := h^1 \cdot y^0 = h \mod{N}$$
 
-Together, $N, \mathcal{T}, g, h, y,$ and $y^{-1}$ comprise the **public parameters** of the vote, denoted `pp` in the smart contract. Note that $y^{-1}$ is included for efficiency (i.e. avoiding the need to compute a modular inverse onchain).
+Together, $N, \mathcal{T}, g, h, y,$ and $y^{-1}$ comprise the **public parameters** of the vote, denoted `pp` in the smart contract. Note that $y^{-1}$ is included for efficiency (i.e. avoiding the need to compute a modular inverse on-chain).
 
 In addition, the `_createVote` function takes the following parameters:
 - `string description` (A human-readable description of the vote)
@@ -98,9 +110,9 @@ $$\text{hash}(\text{tally}_\text{ct}.u, w, pp, j)\mathbin{|}2^{255} \stackrel{?}
 
 $$\text{Baillie-PSW}(\ell)  \stackrel{?}{=} \text{true}$$
 
-The primality test is instantiated using Baillie-PSW, but can be replaced with another probabilistic primality test (or e.g. Pocklington primality certificates). 
+The primality test is instantiated using [Baillie-PSW](https://en.wikipedia.org/wiki/Baillie%E2%80%93PSW_primality_test), but can be replaced with another probabilistic primality test (or e.g. [Pocklington primality certificates](https://en.wikipedia.org/wiki/Primality_certificate#Pocklington_Based_Certificates)). 
 
-The contract then verifies the Wesolowski proof of exponentiation as follows:
+The contract then verifies the [Wesolowski](https://eprint.iacr.org/2018/623.pdf) proof of exponentiation as follows:
 
 $$r := 2^\mathcal{T} \mod{\ell}$$
 
@@ -127,6 +139,41 @@ We provide an example contract using [Semaphore](https://semaphore.appliedzkp.or
 ### Variants and tradeoffs
 
 TODO
+
+## This repo
+
+### `HomomorphicTimeLockVote.sol`
+
+This contract contains the core logic of the homomorphic time-lock puzzle voting protocol.
+It is meant to be inherited and extended with application-specific logic, e.g. access control: who can create a vote, who can cast a ballot, etc. 
+
+The three main functions follow the intuitive lifecycle of a vote: `_createVote`, `_castBallot`, and `_finalizeVote`.
+
+### Semaphore extension
+
+The `SemaphoreHTLV` contract is an example of how one can extend `HomomorphicTimeLockVote` with a ZK set membership protocol to achieve ballot privacy. Note that Semaphore could be replaced with some other ZK set membership module (e.g. [Semacaulk](https://github.com/geometryresearch/semacaulk/)) to the same effect. 
+
+### Big integer arithmetic
+
+The modular 1024-bit arithmetic needed for RSA group operations is implemented in `LibUint1024.sol`. We represent the numbers using `uint256[4]` types. 
+
+Most functions in the library can be generated for an arbitrary number size (`uint256[N]` for some `N`) using the `LibUint.sol.jinja` template and the corresponding script `generate_lib_uint.py`. The `mulMod` is a notable exception; the approach implemented `LibUint1024.sol` doesn't scale past `uint256[4]` due to stack size limitations. 
+
+### `LibPrime.sol`
+
+This library implements various primality tests: [Miller-Rabin](https://en.wikipedia.org/wiki/Miller%E2%80%93Rabin_primality_test), [Lucas](https://en.wikipedia.org/wiki/Lucas_primality_test), and [Baillie-PSW](https://en.wikipedia.org/wiki/Baillie%E2%80%93PSW_primality_test). In addition, it implements [Pocklington](https://en.wikipedia.org/wiki/Pocklington_primality_test) primality certificate verification, which guarantees (deterministically) that a number is prime. 
+
+The `checkHashToPrime` function (used in `HomomorphicTimeLockVote.sol`) uses the Baillie-PSW primality test because it offers a good balance between gas efficiency and security. 
+
+### Tests
+
+`LibUint1024.t.sol` contains fuzz tests for the arithmetic functions in `LibUint1024`. These include differential tests, where the reference functions are written in Python (see [`big_math_reference.py`](./test/big_math_reference.py)).
+
+The numbers used in `LibPrime.t.sol` were generated using https://bigprimes.org/.
+
+`VerifyBallot.t.sol` and `VerifySolution.t.sol` contain tests for `_verifyBallotValidity` and `_verifySolutionCorrectness`, respectively. The tests were generated using [`generate_verify_ballot_test.py`](./templates/generate_verify_ballot_test.py) and [`generate_verify_solution_test.py`](./templates/generate_verify_solution_test.py). These scripts also give a sketch of how a user might generate these proofs in a production setting.
+
+`HomomorphicTimeLockVote.t.sol` contains an end-to-end test, and can be used to benchmark the gas cost of casting a ballot (using the `--gas-report` flag). 
 
 ## Disclaimer
 

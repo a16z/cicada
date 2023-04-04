@@ -230,19 +230,19 @@ contract LibPrimeTest is Test {
         assertEq(lib.trailingZeros(x), _trailingZerosRef(x));
     }
 
-    function proveBitLen(uint256 x)
-        external
-    {
-        require(x != 0);
-        assert(_bitLenRef(x) == LibPrime.bitLen(x));
-    }
+    // function proveBitLen(uint256 x)
+    //     external
+    // {
+    //     require(x != 0);
+    //     assert(_bitLenRef(x) == LibPrime.bitLen(x));
+    // }
 
-    function proveTrailingZeros(uint256 x)
-        external
-    {
-        require(x != 0);
-        assert(_trailingZerosRef(x) == LibPrime.trailingZeros(x));
-    }
+    // function proveTrailingZeros(uint256 x)
+    //     external
+    // {
+    //     require(x != 0);
+    //     assert(_trailingZerosRef(x) == LibPrime.trailingZeros(x));
+    // }
 
     // ================================================================    
     
@@ -262,7 +262,7 @@ contract LibPrimeTest is Test {
         pure
         returns (uint256 z)
     {
-        while(1 & x == 0) {
+        while (1 & x == 0) {
             z++;
             x >>= 1;
         }
