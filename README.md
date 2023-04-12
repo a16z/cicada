@@ -16,26 +16,28 @@ Other tests: `forge test --no-match-test testRef`
 
 ## How it works
 
-At a high-level, our implementation adapts the linearly-homomorphic time-lock puzzle scheme described in ([Malavolta and Thyagarajan, 2019](https://eprint.iacr.org/2019/635.pdf)) by using exponential ElGamal instead of Paillier encryption. 
+At a high-level, our implementation adapts the linearly-homomorphic time-lock puzzle scheme described in ([Malavolta and Thyagarajan, 2019](https://eprint.iacr.org/2019/635.pdf)), using exponential ElGamal instead of Paillier encryption. 
 
-Throughout the following descriptions, we take $\mathbb{Z}_N^* %$ to mean $\mathbb{Z}_N^* / \{\pm 1\}$, and we take $x \mod{N}$ to mean $\min\left(x \mod N, -x \mod N\right)$ –– see `LibUint1024.normalize`. We use $\mathbb{Z}_N^* / \{\pm 1\}$ to avoid the low-order issue described in [Section 6](http://crypto.stanford.edu/~dabo/papers/VDFsurvey.pdf). 
+Throughout the following descriptions, we take $\mathbb{Z}_N^* %$ to mean $\mathbb{Z}_N^* / \{\pm 1\}$, and we take $x \mod{N}$ to mean $\min\left(x \mod N, -x \mod N\right)$ –– see `LibUint1024.normalize`. We use $\mathbb{Z}_N^* / \{\pm 1\}$ to ensure the low-order assumption is not trivially false, as suggested in [Section 6](http://crypto.stanford.edu/~dabo/papers/VDFsurvey.pdf). 
 
 ### Homomorphic time-lock puzzles
 
-A [time-lock puzzle](https://people.csail.mit.edu/rivest/pubs/RSW96.pdf) is a cryptographic puzzle that encapsulates some secret which can be revealed after some time $\mathcal{T}$ of (non-parallelizable) computation.
+A [time-lock puzzle](https://people.csail.mit.edu/rivest/pubs/RSW96.pdf) is a cryptographic puzzle that encapsulates some secret which can be receovered by performing $\mathcal{T}$ steps of (non-parallelizable) computation.
 
-A [homomorphic time-lock puzzle](https://eprint.iacr.org/2019/635.pdf) is one where one can homomorphically manipulate the contents of the puzzle without knowing the solution or backdoor. In particular, a linearly homomorphic time-lock puzzle allows one to perform additions and scalar multiplications on puzzles. 
+Time-lock puzzles are useful for voting schemes because they allow users to post their votes as a puzzle, ensuring it can eventually be revealed while keeping it secret during the election, a property called *running-tally privacy*. The goal is that users can cast votes without being influenced by other votes already cast. Time-lock puzzles are rather unique in the field of private voting schemes in that they achieve running-tally privacy without relying on tallying authorities, threshold encryption or any other trusted parties: anybody can solve a time-lock puzzle to ensure votes are revealed after the election.
 
-As the authors of the paper note, linearly homomorphic time-lock puzzles are a suitable primitive for private voting: ballots can be encoded as puzzles, and they can be homomorphically combined to obtain a private running tally (which is itself a puzzle). This is rather unique in the field of private voting schemes in that it achieves tally privacy without relying on tallying authorities or threshold encryption. 
+A [homomorphic time-lock puzzle](https://eprint.iacr.org/2019/635.pdf) is one which can be homomorphically manipulated without knowing the solution or backdoor. In particular, a linearly homomorphic time-lock puzzle allows one to add two puzzles, producing a new puzzle which encapsulates the sum of the the original two puzzles, or perform scalar multiplications on puzzles. 
+
+As the authors of the paper note, linearly homomorphic time-lock puzzles are particularly suitable primitive for private voting: ballots can be encoded as puzzles, and they can be homomorphically combined to obtain a puzzle encoding the final tally. This allows a single computation to recover the final tally, rather than solving a unique puzzle for every vote.
 
 ### Exponential ElGamal
-In the original HTLP paper, the linearly-homomorphic scheme is presented using a Paillier encryption for the puzzle:
+In the original HTLP paper, the linearly-homomorphic scheme is presented using Paillier encryption for the time-lock puzzle:
 
 $$u := g^r \mod{N}$$
 
 $$v := h^{r \cdot N} \cdot (1 + N)^s \mod{N^2}$$
 
-The structure of the Paillier cryptosystem provides additive homomorphism and fast decoding of the secret $s$ once the $\mathcal{T}$ sequential squarings have been computed. However, ballot verification would require large exponentiations modulo $N^2$, which are prohibitively expensive (millions of gas) on most EVM chains. 
+The structure of the Paillier cryptosystem provides additive homomorphism and fast decoding of the secret $s$ once the $\mathcal{T}$ sequential squarings have been computed. However, ballot verification requires large exponentiations modulo $N^2$, which are prohibitively expensive (millions of gas) on most EVM chains. 
 
 Instead, we use [exponential ElGamal](https://crypto.stackexchange.com/a/3630), as follows:
 
@@ -43,14 +45,14 @@ $$u := g^r \mod{N}$$
 
 $$v := h^{r} \cdot y^s \mod{N}$$
 
-Exponential ElGamal provides additive homomorphism, but decoding the final tally requires brute-forcing the discrete log of $v \cdot h^{-r}$ base $y$. As such, it is only suitable if the expected final tally is reasonably small (e.g. $< 2^{32}$). 
+Exponential ElGamal provides additive homomorphism, but decoding the final tally requires brute-forcing the discrete log of $v \cdot h^{-r}$ base $y$. As such, it is only suitable if the expected final tally is reasonably small (e.g. $< 2^{32}$). Of course, this brute-force can be performed offline and the answer provided as a hint which is efficiently verified on-chain.
 
-### Creating a vote
-To create a vote, you need to generate the following parameters:
+### Public parameters
+To instantiate an election, the following parameters are required:
 
-- An RSA modulus $N$. This could be a standard modulus, or one generated via multi-party computation. If somoene knows the factorization of $N$, they would be able to quickly decrypt the tally and all ballots. 
-- A "time" parameter $\mathcal{T}$, the number of sequential squarings required to reveal the contents of the time-lock puzzle.
-- Two randomly chosen generators $g$ and $y$ of $\mathbb{Z}_N^*$, and the precomputed value $h := g^{2^\mathcal{T}} \mod{N}$. 
+- An RSA modulus $N$ (e.g. 1024-4096 bits). This could be a standard modulus, or one generated via multi-party computation. If somoene knows the factorization of $N$, they would be able to quickly decrypt all ballots, undermining running-tally privacy. Future implementations could utilize class groups, removing the risk of this trapdoor.
+- A "time" parameter $\mathcal{T}$, the number of sequential squarings required to reveal the contents of the time-lock puzzle. This parameter must be carefully chosen to ensure an adversary (potentially with hardware acceleration) can't decrypt votes during the ballot-casting period.
+- Two randomly chosen generators $g$ and $y$ of $\mathbb{Z}_N^*$, and the precomputed value $h := g^{2^\mathcal{T}} \mod{N}$. It is possible to efficiently prove that $h$ was generated correctly using a [Wesolowski proof](https://eprint.iacr.org/2018/623.pdf) or [Pietrzak proof](https://eprint.iacr.org/2018/627.pdf).
 
 In the `_createVote` function, the time-lock puzzle associated with the vote's running tally is initialized to a value encoding 0. This could be done by setting both $u$ and $v$ to 1, but we instead initialize them to $g$ and $h$, respectively, so that all eight storage slots are populated (saving gas for the first ballot cast). 
 
@@ -60,12 +62,13 @@ $$\text{tally}_\text{ct}.v := h^1 \cdot y^0 = h \mod{N}$$
 
 Together, $N, \mathcal{T}, g, h, y,$ and $y^{-1}$ comprise the **public parameters** of the vote, denoted `pp` in the smart contract. Note that $y^{-1}$ is included for efficiency (i.e. avoiding the need to compute a modular inverse on-chain).
 
-In addition, the `_createVote` function takes the following parameters:
+### Casting a ballot
+
+The `_createVote` function takes the following parameters:
 - `string description` (A human-readable description of the vote)
 - `uint64 startTime` (When the voting period starts, as a Unix timestamp)
 - `uint64 votingPeriod` (The length of the voting period, in seconds)
 
-### Casting a ballot
 To cast a ballot, the voter provides a homomorphic time-lock puzzle encoding their choice (0 representing "no", 1 representing "yes"), and a zero-knowledge proof that the provided puzzle is a valid ballot. 
 
 Proving that the ballot is a valid is equivalent to the disjunction of two $\Sigma$-protocols of discrete-log equality, i.e. there exists some value $r$ such that:
@@ -128,10 +131,10 @@ If all the checks pass, the vote is marked as finalized.
 
 The construction described above provides tally privacy –– the time-lock puzzle property keeps the tally private for the time paramter $\mathcal{T}$. 
 However, each individual ballot is also a time-lock puzzle, encrypted under the same public parameters.
-This means that just as the tally can be decrypted (by sequential squaring and brute-forcing the secret), so can an individual ballot.
+This means that just as the tally can be decrypted (by sequential squaring and brute-forcing the secret), so can each individual ballot.
 
-This may not be desirable; while we are satisfied with *temporary* ballot privacy, we may want *indefinite* ballot privacy. 
-To accomplish this, we can combine the homomorphic time-lock puzzle scheme with an anonymity protocol, instantiated by zero-knowledge set membership proofs. 
+For some elections this may not be desirable; while we are satisfied with *temporary* tally privacy, we may want *indefinite* ballot privacy. 
+To accomplish this, we can combine the homomorphic time-lock puzzle scheme with an anonymous voter eligibility protocol, instantiated by zero-knowledge set membership proofs. 
 This way, even if a ballot is decrypted, all it would reveal is that _someone_ voted that way –– which is already known from the tally.
 
 We provide an example contract using [Semaphore](https://semaphore.appliedzkp.org/) for anonymity, but you can plug in your ZK set membership solution of choice.
