@@ -6,7 +6,7 @@ environment = Environment(
     trim_blocks=True,
     lstrip_blocks=True
 )
-template = environment.get_template("BigUint.sol.jinja")
+template = environment.get_template("LibUint.sol.jinja")
 
 num_words = int(sys.argv[1], 0)
 content = template.render(num_words=num_words)

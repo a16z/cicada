@@ -14,6 +14,7 @@ library LibUint{{ num_words * 256 }} {
         bn[{{ num_words - 1 }}] = x;
     }
 
+    // Computes a + b, reverting on overflow.
     function add(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b) 
         internal 
         pure
@@ -26,6 +27,7 @@ library LibUint{{ num_words * 256 }} {
         }
     }
 
+    // Computes a - b, reverting on underflow.
     function sub(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b) 
         internal 
         pure
@@ -38,6 +40,7 @@ library LibUint{{ num_words * 256 }} {
         }
     }
 
+    // Computes a + b, returning the {{ num_words * 256 }}-bit result and the carry bit.
     function _add(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b) 
         private 
         pure
@@ -65,6 +68,7 @@ library LibUint{{ num_words * 256 }} {
         }
     }
 
+    // Computes a - b, returning the {{ num_words * 256 }}-bit result and the carry bit.
     function _sub(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b) 
         private 
         pure
@@ -87,6 +91,7 @@ library LibUint{{ num_words * 256 }} {
         }
     }
 
+    // a == b
     function eq(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b)
         internal
         pure
@@ -99,6 +104,7 @@ library LibUint{{ num_words * 256 }} {
             a[{{ num_words - 1 }}] == b[{{ num_words - 1 }}];
     }
 
+    // a > b
     function gt(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b)
         internal
         pure
@@ -107,6 +113,7 @@ library LibUint{{ num_words * 256 }} {
         return _gt(a, b, false);
     }
 
+    // a >= b
     function gte(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b)
         internal
         pure
@@ -137,6 +144,7 @@ library LibUint{{ num_words * 256 }} {
         return trueIfEqual || a[{{ num_words - 1 }}] > b[{{ num_words - 1 }}];
     }
 
+    // a < b
     function lt(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b)
         internal
         pure
@@ -145,6 +153,7 @@ library LibUint{{ num_words * 256 }} {
         return _lt(a, b, false);
     }
 
+    // a <= b
     function lte(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b)
         internal
         pure
@@ -175,17 +184,7 @@ library LibUint{{ num_words * 256 }} {
         return trueIfEqual || a[{{ num_words - 1 }}] < b[{{ num_words - 1 }}];
     }
 
-    function mulMod(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b, uint256[{{ num_words }}] memory modulus)
-        internal
-        view
-        returns (uint256[{{ num_words }}] memory result)
-    {
-        uint256[{{ num_words }}] memory sumSquared = a.addMod(b, modulus).expMod(2, modulus);
-        uint256[{{ num_words }}] memory differenceSquared = a.subMod(b, modulus).expMod(2, modulus);
-        // Returns (a+b)^2 - (a-b)^2 = 4ab
-        return sumSquared.subMod(differenceSquared, modulus);
-    }
-
+    // Computes (a + b) % modulus. Assumes a < modulus and b < modulus.
     function addMod(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b, uint256[{{ num_words }}] memory modulus)
         internal
         pure
@@ -198,6 +197,7 @@ library LibUint{{ num_words * 256 }} {
         }
     }
 
+    // Computes (a - b) % modulus. Assumes a < modulus and b < modulus.
     function subMod(uint256[{{ num_words }}] memory a, uint256[{{ num_words }}] memory b, uint256[{{ num_words }}] memory modulus)
         internal
         pure
@@ -210,20 +210,17 @@ library LibUint{{ num_words * 256 }} {
         }
     }
 
+    // Computes (base ** exponent) % modulus
     function expMod(uint256[{{ num_words }}] memory base, uint256 exponent, uint256[{{ num_words }}] memory modulus)
         internal
         view
         returns (uint256[{{ num_words }}] memory result)
     {
-        if (exponent == 0) {
-            return uint256(1).toUint{{ num_words * 256 }}();
-        }
-
         assembly {
             // Get free memory pointer
             let p := mload(0x40)
 
-            // Store parameters for the Expmod (0x05) precompile
+            // Store parameters for the EXPMOD precompile
             mstore(p, {{ '0x%x' % (num_words * 32) }})               // Length of base ({{ num_words }} * 32 = {{ num_words * 32 }} bytes)
             mstore(add(p, 0x20), 0x20)     // Length of exponent
             mstore(add(p, 0x40), {{ '0x%x' % (num_words * 32) }})    // Length of modulus ({{ num_words }} * 32 = {{ num_words * 32 }} bytes)
@@ -246,5 +243,61 @@ library LibUint{{ num_words * 256 }} {
             // Update free memory pointer
             mstore(0x40, add(p, {{ '0x%x' % ((num_words * 2 + 4) * 32) }}))
         }
+    }
+
+    // Computes (base ** exponent) % modulus
+    function expMod(
+        uint256[{{ num_words }}] memory base, 
+        uint256[{{ num_words }}] memory exponent, 
+        uint256[{{ num_words }}] memory modulus
+    )
+        internal
+        view
+        returns (uint256[{{ num_words }}] memory result)
+    {
+        assembly {
+            // Get free memory pointer
+            let p := mload(0x40)
+
+            // Store parameters for the EXPMOD precompile
+            mstore(p, {{ '0x%x' % (num_words * 32) }})               // Length of base ({{ num_words }} * 32 = {{ num_words * 32 }} bytes)
+            mstore(add(p, 0x20), {{ '0x%x' % (num_words * 32) }})    // Length of exponent ({{ num_words }} * 32 = {{ num_words * 32 }} bytes)
+            mstore(add(p, 0x40), {{ '0x%x' % (num_words * 32) }})    // Length of modulus ({{ num_words }} * 32 = {{ num_words * 32 }} bytes)
+
+            // Use Identity (0x04) precompile to memcpy the base
+            if iszero(staticcall(gas(), 0x04, base, {{ '0x%x' % (num_words * 32) }}, add(p, 0x60), {{ '0x%x' % (num_words * 32) }})) {
+                revert(0, 0)
+            }
+            // Use Identity (0x04) precompile to memcpy the exponent
+            if iszero(staticcall(gas(), 0x04, exponent, {{ '0x%x' % (num_words * 32) }}, add(p, {{ '0x%x' % (num_words * 32 + 96) }}), {{ '0x%x' % (num_words * 32) }})) {
+                revert(0, 0)
+            }
+            // Use Identity (0x04) precompile to memcpy the modulus
+            if iszero(staticcall(gas(), 0x04, modulus, {{ '0x%x' % (num_words * 32) }}, add(p, {{ '0x%x' % (num_words * 32 * 2 + 96) }}), {{ '0x%x' % (num_words * 32) }})) {
+                revert(0, 0)
+            }
+            // Call 0x05 (EXPMOD) precompile
+            if iszero(staticcall(gas(), 0x05, p, {{ '0x%x' % (num_words * 32 * 3 + 96) }}, result, {{ '0x%x' % (num_words * 32) }})) {
+                revert(0, 0)
+            }
+
+            // Update free memory pointer
+            mstore(0x40, add(p, {{ '0x%x' % (num_words * 32 * 3 + 96) }}))
+        }
+    }
+
+    function normalize(
+        uint256[{{ num_words }}] memory x,
+        uint256[{{ num_words }}] memory modulus
+    )
+        internal
+        pure
+        returns (uint256[{{ num_words }}] memory normalized)
+    {
+        uint256[{{ num_words }}] memory negX = modulus.sub(x);
+        if (negX.lt(x)) {
+            return negX;
+        }
+        return x;
     }
 }
