@@ -1,13 +1,13 @@
 pragma solidity ^0.8;
 
 import 'forge-std/Test.sol';
-import '../src/HomomorphicTimeLockVote.sol';
+import '../src/CicadaVote.sol';
 import '../src/LibUint1024.sol';
 
 
-contract VoteWrapper is HomomorphicTimeLockVote {
+contract VoteWrapper is CicadaVote {
     function createVote(
-        HomomorphicTimeLockVote.PublicParameters memory pp,
+        CicadaVote.PublicParameters memory pp,
         string memory description,
         uint64 startTime,
         uint64 votingPeriod
@@ -19,9 +19,9 @@ contract VoteWrapper is HomomorphicTimeLockVote {
 
     function castBallot(
         uint256 voteId,
-        HomomorphicTimeLockVote.PublicParameters memory pp,
-        HomomorphicTimeLockVote.Puzzle memory ballot,
-        HomomorphicTimeLockVote.ProofOfValidity memory PoV
+        CicadaVote.PublicParameters memory pp,
+        CicadaVote.Puzzle memory ballot,
+        CicadaVote.ProofOfValidity memory PoV
     )
         external
     {
@@ -30,10 +30,10 @@ contract VoteWrapper is HomomorphicTimeLockVote {
 
     function finalizeVote(
         uint256 voteId,
-        HomomorphicTimeLockVote.PublicParameters memory pp,
+        CicadaVote.PublicParameters memory pp,
         uint64 tallyPlaintext,
         uint256[4] memory w,
-        HomomorphicTimeLockVote.ProofOfExponentiation memory PoE
+        CicadaVote.ProofOfExponentiation memory PoE
     )
         external
     {
@@ -41,7 +41,7 @@ contract VoteWrapper is HomomorphicTimeLockVote {
     }
 }
 
-contract HomomorphicTimeLockVoteTest is Test {
+contract CicadaVoteTest is Test {
     using LibUint1024 for *;
 
     VoteWrapper vote;
@@ -54,9 +54,9 @@ contract HomomorphicTimeLockVoteTest is Test {
     function testEndToEnd()
         external
     {
-        HomomorphicTimeLockVote.PublicParameters memory pp = _getPublicParameters();
+        CicadaVote.PublicParameters memory pp = _getPublicParameters();
 
-        HomomorphicTimeLockVote.Puzzle memory Z;
+        CicadaVote.Puzzle memory Z;
         Z.u = [
             5700081174299932681074366895346476174664566142409724263460709345683317739721,
             15604509745864751380609453460905733184391570040193513370972523270305838250437,
@@ -70,7 +70,7 @@ contract HomomorphicTimeLockVoteTest is Test {
             70435993318348499880777985289127683872848928786575090690665743349256138171680
         ];
 
-        HomomorphicTimeLockVote.ProofOfValidity memory PoV;
+        CicadaVote.ProofOfValidity memory PoV;
         PoV.a_0 = [
             14411143447429361719239018362364169709449173979248039936708616362552476533220,
             46020205016531978614488092068880029307639733849976011224145918040608816044726,
@@ -346,7 +346,7 @@ contract HomomorphicTimeLockVoteTest is Test {
             101029134881245189564267847070463473651301537654236983832022988928142147235595
         ];
 
-        HomomorphicTimeLockVote.ProofOfExponentiation memory PoE;
+        CicadaVote.ProofOfExponentiation memory PoE;
         PoE.pi = [
             5892276222152718978579309584087311486350314863110892479193978560142209406642,
             57943099565655858862289008016954573338488346145691069874542183455512227787609,
@@ -363,7 +363,7 @@ contract HomomorphicTimeLockVoteTest is Test {
     function _getPublicParameters()
         private
         pure
-        returns (HomomorphicTimeLockVote.PublicParameters memory pp)
+        returns (CicadaVote.PublicParameters memory pp)
     {
         pp.N = [
             77396894314447592859859949539171496747276287100760693564222689465229532416249,

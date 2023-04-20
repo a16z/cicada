@@ -1,6 +1,6 @@
 pragma solidity ^0.8;
 
-import './HomomorphicTimeLockVote.sol';
+import './CicadaVote.sol';
 
 
 // https://github.com/semaphore-protocol/semaphore/blob/main/packages/contracts/contracts/interfaces/ISemaphoreVerifier.sol
@@ -23,9 +23,9 @@ interface ISemaphoreVerifier {
 }
 
 
-/// @dev Example showing how to extend the HomomorphicTimeLockVote
+/// @dev Example showing how to extend the CicadaVote
 ///      contract with an anonymity solution (Semaphore in this case). 
-contract SemaphoreHTLV is HomomorphicTimeLockVote {
+contract SemaphoreCicada is CicadaVote {
 
     struct SemaphoreData {
         uint256 merkleRoot;

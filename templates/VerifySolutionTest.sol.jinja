@@ -2,7 +2,7 @@
         external
         view
     {
-        HomomorphicTimeLockVote.PublicParameters memory pp;
+        CicadaVote.PublicParameters memory pp;
         pp.N = [
             {% for element in N %}
             {{ element }}{% if loop.index != 4 %},{% endif %}
@@ -43,7 +43,7 @@
             {% endfor %}
         ];
 
-        HomomorphicTimeLockVote.Puzzle memory Z;
+        CicadaVote.Puzzle memory Z;
         Z.u = [
             {% for element in u %}
             {{ element }}{% if loop.index != 4 %},{% endif %}
@@ -57,7 +57,7 @@
             {% endfor %}
         ];
 
-        HomomorphicTimeLockVote.ProofOfExponentiation memory PoE;
+        CicadaVote.ProofOfExponentiation memory PoE;
         PoE.pi = [
             {% for element in pi %}
             {{ element }}{% if loop.index != 4 %},{% endif %}

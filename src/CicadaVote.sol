@@ -4,7 +4,7 @@ import './LibUint1024.sol';
 import './LibPrime.sol';
 
 
-contract HomomorphicTimeLockVote {
+contract CicadaVote {
     using LibUint1024 for *;
 
     struct PublicParameters {

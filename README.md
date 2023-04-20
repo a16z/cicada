@@ -22,7 +22,7 @@ Throughout the following descriptions, we take $\mathbb{Z}_N^* %$ to mean $\math
 
 ### Homomorphic time-lock puzzles
 
-A [time-lock puzzle](https://people.csail.mit.edu/rivest/pubs/RSW96.pdf) is a cryptographic puzzle that encapsulates some secret which can be receovered by performing $\mathcal{T}$ steps of (non-parallelizable) computation.
+A [time-lock puzzle](https://people.csail.mit.edu/rivest/pubs/RSW96.pdf) is a cryptographic puzzle that encapsulates some secret which can be recovered by performing $\mathcal{T}$ steps of (non-parallelizable) computation.
 
 Time-lock puzzles are useful for voting schemes because they allow users to post their votes as a puzzle, ensuring it can eventually be revealed while keeping it secret during the election, a property called *running-tally privacy*. The goal is that users can cast votes without being influenced by other votes already cast. Time-lock puzzles are rather unique in the field of private voting schemes in that they achieve running-tally privacy without relying on tallying authorities, threshold encryption or any other trusted parties: anybody can solve a time-lock puzzle to ensure votes are revealed after the election.
 
@@ -145,7 +145,7 @@ TODO
 
 ## This repo
 
-### `HomomorphicTimeLockVote.sol`
+### `CicadaVote.sol`
 
 This contract contains the core logic of the homomorphic time-lock puzzle voting protocol.
 It is meant to be inherited and extended with application-specific logic, e.g. access control: who can create a vote, who can cast a ballot, etc. 
@@ -154,7 +154,7 @@ The three main functions follow the intuitive lifecycle of a vote: `_createVote`
 
 ### Semaphore extension
 
-The `SemaphoreHTLV` contract is an example of how one can extend `HomomorphicTimeLockVote` with a ZK set membership protocol to achieve ballot privacy. Note that Semaphore could be replaced with some other ZK set membership module (e.g. [Semacaulk](https://github.com/geometryresearch/semacaulk/)) to the same effect. 
+The `SemaphoreCicada` contract is an example of how one can extend `CicadaVote` with a ZK set membership protocol to achieve ballot privacy. Note that Semaphore could be replaced with some other ZK set membership module (e.g. [Semacaulk](https://github.com/geometryresearch/semacaulk/)) to the same effect. 
 
 ### Big integer arithmetic
 
@@ -166,7 +166,7 @@ Most functions in the library can be generated for an arbitrary number size (`ui
 
 This library implements various primality tests: [Miller-Rabin](https://en.wikipedia.org/wiki/Miller%E2%80%93Rabin_primality_test), [Lucas](https://en.wikipedia.org/wiki/Lucas_primality_test), and [Baillie-PSW](https://en.wikipedia.org/wiki/Baillie%E2%80%93PSW_primality_test). In addition, it implements [Pocklington](https://en.wikipedia.org/wiki/Pocklington_primality_test) primality certificate verification, which guarantees (deterministically) that a number is prime. 
 
-The `checkHashToPrime` function (used in `HomomorphicTimeLockVote.sol`) uses the Baillie-PSW primality test because it offers a good balance between gas efficiency and security. 
+The `checkHashToPrime` function (used in `CicadaVote.sol`) uses the Baillie-PSW primality test because it offers a good balance between gas efficiency and security. 
 
 ### Tests
 
@@ -176,7 +176,7 @@ The numbers used in `LibPrime.t.sol` were generated using https://bigprimes.org/
 
 `VerifyBallot.t.sol` and `VerifySolution.t.sol` contain tests for `_verifyBallotValidity` and `_verifySolutionCorrectness`, respectively. The tests were generated using [`generate_verify_ballot_test.py`](./templates/generate_verify_ballot_test.py) and [`generate_verify_solution_test.py`](./templates/generate_verify_solution_test.py). These scripts also give a sketch of how a user might generate these proofs in a production setting.
 
-`HomomorphicTimeLockVote.t.sol` contains an end-to-end test, and can be used to benchmark the gas cost of casting a ballot (using the `--gas-report` flag). 
+`CicadaVote.t.sol` contains an end-to-end test, and can be used to benchmark the gas cost of casting a ballot (using the `--gas-report` flag). 
 
 ## Disclaimer
 
