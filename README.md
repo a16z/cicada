@@ -96,9 +96,9 @@ Note that the protocol is made non-interactive using the Fiat-Shamir heuristic (
 
 If the proof of validity is successfully verified, the running tally is updated, leveraging the additive homomorphism of the time-lock puzzles: 
 
-$$\text{tally}_\text{ct}.u = \text{tally}_\text{ct}.u \cdot Z.u \mod{N}$$
+$$\text{tally}_\text{ct}.u = \text{tally}\_\text{ct}.u \cdot Z.u \mod{N}$$
 
-$$\text{tally}_\text{ct}.v = \text{tally}_\text{ct}.v \cdot Z.v \mod{N}$$
+$$\text{tally}_\text{ct}.v = \text{tally}\_\text{ct}.v \cdot Z.v \mod{N}$$
 
 ### Finalizing a vote
 
