@@ -5,7 +5,10 @@ import './LibUint1024.sol';
 import './LibPrime.sol';
 
 
-contract CicadaVote {
+/// @dev The Cicada base contract. Note that the `createVote` and 
+///      `castBallot` functions assume that access control is implemented
+///      by the inheriting contract.
+abstract contract CicadaVote {
     using LibUint1024 for *;
 
     struct PublicParameters {
@@ -74,6 +77,18 @@ contract CicadaVote {
     uint256 public nextVoteId = 1;
     mapping(uint256 => Vote) public votes;
 
+    /// @dev Creates a vote using the given public parameters.
+    ///      CAUTION: This function does not check the validity of 
+    ///      the public parameters! Most notably, it does not check
+    ///          1. that pp.N is a valid RSA modulus, 
+    ///          2. that h = g^(2^T), 
+    ///          3. or that g and y have Jacobi symbol 1. 
+    ///      These should be verified off-chain (or in the inheriting
+    ///      contract, if desired).
+    /// @param pp Public parameters for the homomorphic time-lock puzzles.
+    /// @param description A human-readable description of the vote.
+    /// @param startTime The UNIX timestamp at which voting opens.
+    /// @param votingPeriod The duration of the voting period, in seconds.
     function _createVote(
         PublicParameters memory pp,
         string memory description,
@@ -82,8 +97,6 @@ contract CicadaVote {
     )
         internal
     {
-        // TODO: Validate g and y generated via Fiat-Shamir? 
-        //       Validate h = g^(2^T)?
         pp.g = pp.g.normalize(pp.N);
         pp.h = pp.h.normalize(pp.N);
         pp.y = pp.y.normalize(pp.N);
@@ -123,6 +136,11 @@ contract CicadaVote {
         );
     }
 
+    /// @dev Casts a ballot for an active vote.
+    /// @param voteId The vote to cast a ballot for.
+    /// @param pp The public parameters used for the vote.
+    /// @param ballot The time-lock puzzle encoding the ballot.
+    /// @param PoV The proof of ballot validity.
     function _castBallot(
         uint256 voteId,
         PublicParameters memory pp,
@@ -147,6 +165,15 @@ contract CicadaVote {
         _updateTally(pp, vote.tally, ballot);
     }
 
+    /// @dev Finalizes a vote by supplying supplying the decoded tally
+    ///      `tallyPlaintext` and associated proof of correctness.
+    /// @param voteId The vote to cast a ballot for.
+    /// @param pp The public parameters used for the vote.
+    /// @param tallyPlaintext The purported plaintext vote tally.
+    /// @param w The purported value `w := Z.u^(2^T)`, where Z
+    ///          is the puzzle encoding the tally.
+    /// @param PoE The Wesolowski proof of exponentiation (i.e. the 
+    ///        proof that `w = Z.u^(2^T)`)
     function _finalizeVote(
         uint256 voteId,
         PublicParameters memory pp,
@@ -185,13 +212,17 @@ contract CicadaVote {
         );
     }
 
-    // OR composition of two DLOG equality sigma protocols:
-    //     DLOG_g(u) = DLOG_h(v) OR DLOG_g(u) = DLOG(v / y)
-    // This is equivalent to proving that there exists some
-    // value r such that:
-    //     (u = g^r AND v = h^r) OR (u = v^r AND v = h^r * y)
-    // where the former case represents a "no" ballot and the
-    // latter case represents a "yes" ballot.
+    /// @dev OR composition of two DLOG equality sigma protocols:
+    ///          DLOG_g(u) = DLOG_h(v) OR DLOG_g(u) = DLOG(v / y)
+    ///      This is equivalent to proving that there exists some
+    ///      value r such that:
+    ///          (u = g^r AND v = h^r) OR (u = v^r AND v = h^r * y)
+    ///      where the former case represents a "no" ballot and the
+    ///      latter case represents a "yes" ballot.
+    /// @param pp The public parameters used for the vote.
+    /// @param parametersHash The hash of `pp`.
+    /// @param Z The time-lock puzzle encoding the ballot. 
+    /// @param PoV The proof of ballot validity.
     function _verifyBallotValidity(
         PublicParameters memory pp,
         bytes32 parametersHash,
@@ -272,8 +303,14 @@ contract CicadaVote {
         }
     }
 
-    // Verifies that `s` is the plaintext value encoded in the 
-    // homomorphic timelock puzzle `Z`. 
+    /// @dev Verifies that `s` is the plaintext tally encoded in the 
+    ///      homomorphic timelock puzzle `Z`. 
+    /// @param pp The public parameters used for the vote.
+    /// @param Z The time-lock puzzle encoding the tally. 
+    /// @param s The purported plaintext tally encoded by `Z`.
+    /// @param w The purported value `w := Z.u^(2^T)`. 
+    /// @param PoE The Wesolowski proof of exponentiation (i.e. the 
+    ///        proof that `w = Z.u^(2^T)`)
     function _verifySolutionCorrectness(
         PublicParameters memory pp,
         Puzzle memory Z,
@@ -299,6 +336,7 @@ contract CicadaVote {
 
     // Verifies the Wesolowski proof of exponentiation that:
     //     u^(2^T) = w (mod N)
+    // See Section 2.1 of http://crypto.stanford.edu/~dabo/papers/VDFsurvey.pdf
     function _verifyExponentiation(
         PublicParameters memory pp,
         bytes32 parametersHash,

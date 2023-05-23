@@ -2,6 +2,8 @@
 pragma solidity ^0.8;
 
 
+/// @dev A library implementing various probabilistic primality tests, plus 
+///      Pocklington primality certificate verification.
 library LibPrime {
 
     // A bitmask for testing membership in the set of the first 96 odd primes. 
@@ -54,8 +56,14 @@ library LibPrime {
         uint256 prime
     );
 
-    // Based on Dankrad Feist's implementation:
-    // https://github.com/dankrad/rsa-bounty/blob/master/contract/rsa_bounty.sol
+    /// @dev Checks whether `input` hashes to the given 256-bit `prime`. More
+    ///      specifically, keccak256(input) should be match `prime` in all but 
+    ///      the most significants bit. Checks that `prime` is in fact prime 
+    ///      using the Baillie-PSW primality test.
+    ///      Based on Dankrad Feist's implementation:
+    ///      https://github.com/dankrad/rsa-bounty/blob/master/contract/rsa_bounty.sol
+    /// @param input The input to the hash-to-prime function.
+    /// @param prime The purported output of the hash-to-prime function.
     function checkHashToPrime(
         bytes memory input,
         uint256 prime
@@ -72,20 +80,26 @@ library LibPrime {
         }
     }
 
-    // https://en.wikipedia.org/wiki/Baillie%E2%80%93PSW_primality_test
-    // The Baillie-PSW primality test has no known pseudoprimes,
-    // though it's conjectured that there are infinitely many. 
+    /// @dev Performs the Baillie-PSW primality test.
+    ///      https://en.wikipedia.org/wiki/Baillie%E2%80%93PSW_primality_test
+    ///      The Baillie-PSW primality test has no known pseudoprimes (though 
+    ///      it's conjectured that there are infinitely many).
+    /// @param n The number to check the primality of.
+    /// @return Returns true if `n` is prime, false if not.
     function bailliePSW(uint256 n)
         internal
         view
         returns (bool)
     {
-        return lucas(n) && _millerRabinBase2(n);
+        return _millerRabinBase2(n) && lucas(n);
     }
 
-    // https://en.wikipedia.org/wiki/Lucas_primality_test
-    // Based on the Go implementation:
-    // https://github.com/golang/go/blob/master/src/math/big/prime.go
+    /// @dev Performs the Lucas primality test.
+    ///      https://en.wikipedia.org/wiki/Lucas_primality_test
+    ///      Based on the Go implementation:
+    ///      https://github.com/golang/go/blob/master/src/math/big/prime.go
+    /// @param n The number to check the primality of.
+    /// @return Returns true if `n` is prime, false if not.
     function lucas(uint256 n)
         internal
         pure
@@ -175,10 +189,14 @@ library LibPrime {
     bytes32 constant HIGHEST_BIT_DE_BRUIJN_TABLE = 0x010a020b0e16031e0c0f1113171a041f090d151d10121908141c18071b060520;
     uint256 constant HIGHEST_BIT_DE_BRUIJN_SEQUENCE = 130329821;
 
-    // A hybrid of the binary search appraoch and the de Bruijn approach
-    // described here: https://graphics.stanford.edu/~seander/bithacks.html#IntegerLogDeBruijn
-    // Note that bitlen(x) == log2(x) + 1, so the de Bruijn table values 
-    // are shifted by 1.
+    /// @dev Computes the minimum number of bits needed to represent `v`. 
+    ///      Uses a hybrid of the binary search approach and the de Bruijn approach
+    ///      described here: 
+    ///      https://graphics.stanford.edu/~seander/bithacks.html#IntegerLogDeBruijn
+    ///      Note that bitlen(x) == log2(x) + 1, so the de Bruijn table values are
+    ///      shifted by 1.
+    /// @param v The number to compute the bit-length of.
+    /// @return r The bit-length of `v`.
     function bitLen(uint256 v)
         internal
         pure
@@ -214,8 +232,11 @@ library LibPrime {
     bytes32 constant LOWEST_BIT_DE_BRUIJN_TABLE = 0x00011c021d0e18031e16140f191104081f1b0d17151310071a0c12060b050a09;
     uint256 constant LOWEST_BIT_DE_BRUIJN_SEQUENCE = 125613361;
 
-    // A hybrid of the binary search appraoch and the de Bruijn approach
-    // described here: https://graphics.stanford.edu/~seander/bithacks.html#ZerosOnRightMultLookup
+    /// @dev Computes the number of trailing zeros in the (big-endian) bit representation of `v`.
+    ///      Uses a hybrid of the binary search approach and the de Bruijn approach
+    ///      described here: https://graphics.stanford.edu/~seander/bithacks.html#ZerosOnRightMultLookup
+    /// @param v The number to compute the trailing zeros of.
+    /// @return r The number of trailing zeros.
     function trailingZeros(uint256 v)
         internal
         pure
@@ -242,7 +263,11 @@ library LibPrime {
         }
     }
 
-    // Returns the Jacobi symbol (d / n)
+    /// @dev Returns the Jacobi symbol (d / n)
+    ///      https://en.wikipedia.org/wiki/Jacobi_symbol
+    /// @param d The upper argument of the Jacobi symbol
+    /// @param n The lower argument of the Jacobi symbol
+    /// @return j The Jacobi symbol (0, 1, or -1).
     function jacobi(uint256 d, uint256 n)
         internal
         pure
@@ -274,10 +299,14 @@ library LibPrime {
         }
     }
 
-    // Returns true if `certificate` is a valid Pocklington certificate 
-    // of primality. Providing a valid certificate guarantees that `n`
-    // is prime, whereas the primality tests in this library are probabilistic.
-    // https://en.wikipedia.org/wiki/Pocklington_primality_test
+    /// @dev Returns true if `certificate` is a valid Pocklington certificate 
+    ///      of primality. Providing a valid certificate guarantees that `n`
+    ///      is prime, whereas the primality tests in this library are probabilistic.
+    ///      https://en.wikipedia.org/wiki/Pocklington_primality_test
+    /// @param n The number to verify the primality of.
+    /// @param certificate The Pocklington primality certificate.
+    /// @return bool True if the certificate is valid (certifying that `n` is prime),
+    ///         false if not.
     function pocklington(uint256 n, PocklingtonStep[] memory certificate) 
         internal 
         view 
@@ -387,7 +416,10 @@ library LibPrime {
         return true;
     }
 
-    // Returns true iff `a` and `b` are coprime.
+    /// @dev Checks whether `a` and `b` are coprime. 
+    /// @param a The first number
+    /// @param b The second number
+    /// @return result True if `a` and `b` are coprime, false if not.
     function coprime(uint256 a, uint256 b)
         internal
         pure
@@ -405,9 +437,11 @@ library LibPrime {
             
     uint256 constant MILLER_RABIN_ITERATIONS = 30;
 
-    // Use Miller-Rabin test to probabilistically check whether n>3 is prime.
-    // Based on Dankrad Feist's implementation:
-    // https://github.com/dankrad/rsa-bounty/blob/master/contract/rsa_bounty.sol
+    /// @dev Use Miller-Rabin test to probabilistically check whether n > 2 is prime.
+    ///      Based on Dankrad Feist's implementation:
+    ///      https://github.com/dankrad/rsa-bounty/blob/master/contract/rsa_bounty.sol
+    /// @param n The number to check the primality of.
+    /// @return Returns true if `n` is prime, false if not.
     function millerRabin(uint256 n) 
         internal 
         view

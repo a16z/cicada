@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8;
 
+
+/// @dev A library for big (1024-bit) number arithmetic, including modular arithmetic
+///      operations.
 library LibUint1024 {
     using LibUint1024 for *;
 
@@ -9,6 +12,7 @@ library LibUint1024 {
     error Overflow(uint256[4] a, uint256[4] b);
     error Underflow(uint256[4] a, uint256[4] b);
 
+    /// @dev Converts a uint256 to its 1024-bit representation.
     function toUint1024(uint256 x)
         internal 
         pure 
@@ -17,7 +21,7 @@ library LibUint1024 {
         bn[3] = x;
     }
 
-    // Computes a + b, reverting on overflow.
+    /// @dev Computes a + b, reverting on overflow.
     function add(uint256[4] memory a, uint256[4] memory b) 
         internal 
         pure
@@ -30,7 +34,7 @@ library LibUint1024 {
         }
     }
 
-    // Computes a - b, reverting on underflow.
+    /// @dev Computes a - b, reverting on underflow.
     function sub(uint256[4] memory a, uint256[4] memory b) 
         internal 
         pure
@@ -43,7 +47,7 @@ library LibUint1024 {
         }
     }
 
-    // Computes a + b, returning the 1024-bit result and the carry bit.
+    /// @dev Computes a + b, returning the 1024-bit result and the carry bit.
     function _add(uint256[4] memory a, uint256[4] memory b) 
         internal
         pure
@@ -87,7 +91,7 @@ library LibUint1024 {
         }
     }
 
-    // Computes a - b, returning the 1024-bit result and the carry bit.
+    /// @dev Computes a - b, returning the 1024-bit result and the carry bit.
     function _sub(uint256[4] memory a, uint256[4] memory b) 
         internal 
         pure
@@ -128,7 +132,7 @@ library LibUint1024 {
         }
     }
 
-    // a == b
+    /// @dev a == b
     function eq(uint256[4] memory a, uint256[4] memory b)
         internal
         pure
@@ -141,7 +145,7 @@ library LibUint1024 {
             a[3] == b[3];
     }
 
-    // a > b
+    /// @dev a > b
     function gt(uint256[4] memory a, uint256[4] memory b)
         internal
         pure
@@ -150,7 +154,7 @@ library LibUint1024 {
         return _gt(a, b, false);
     }
 
-    // a >= b
+    /// @dev a ≥ b
     function gte(uint256[4] memory a, uint256[4] memory b)
         internal
         pure
@@ -189,7 +193,7 @@ library LibUint1024 {
         return trueIfEqual || a[3] > b[3];
     }
 
-    // a < b
+    /// @dev a < b
     function lt(uint256[4] memory a, uint256[4] memory b)
         internal
         pure
@@ -198,7 +202,7 @@ library LibUint1024 {
         return _lt(a, b, false);
     }
 
-    // a <= b
+    /// a ≤ b
     function lte(uint256[4] memory a, uint256[4] memory b)
         internal
         pure
@@ -237,9 +241,9 @@ library LibUint1024 {
         return trueIfEqual || a[3] < b[3];
     }
 
-    // Computes (a * b) % modulus. Assumes a < modulus and b < modulus.
-    // Uses the "schoolbook" multiplication algorithm, plus the EXPMOD
-    // precompile to reduce by the modulus.
+    /// @dev Computes (a * b) % modulus. Assumes a < modulus and b < modulus.
+    ///      Based on the "schoolbook" multiplication algorithm, using the EXPMOD
+    ///      precompile to reduce by the modulus.
     function mulMod(uint256[4] memory a, uint256[4] memory b, uint256[4] memory modulus)
         internal
         view
@@ -521,7 +525,7 @@ library LibUint1024 {
         }
     }
 
-    // Computes (a + b) % modulus. Assumes a < modulus and b < modulus.
+    /// @dev Computes (a + b) % modulus. Assumes a < modulus and b < modulus.
     function addMod(uint256[4] memory a, uint256[4] memory b, uint256[4] memory modulus)
         internal
         pure
@@ -534,7 +538,7 @@ library LibUint1024 {
         }
     }
 
-    // Computes (a - b) % modulus. Assumes a < modulus and b < modulus.
+    /// @dev Computes (a - b) % modulus. Assumes a < modulus and b < modulus.
     function subMod(uint256[4] memory a, uint256[4] memory b, uint256[4] memory modulus)
         internal
         pure
@@ -547,7 +551,7 @@ library LibUint1024 {
         }
     }
 
-    // Computes (base ** exponent) % modulus
+    /// @dev Computes (base ** exponent) % modulus
     function expMod(uint256[4] memory base, uint256 exponent, uint256[4] memory modulus)
         internal
         view
@@ -582,7 +586,7 @@ library LibUint1024 {
         }
     }
 
-    // Computes (base ** exponent) % modulus
+    /// @dev Computes (base ** exponent) % modulus
     function expMod(
         uint256[4] memory base, 
         uint256[4] memory exponent, 
@@ -623,6 +627,10 @@ library LibUint1024 {
         }
     }
 
+    /// @dev Converts an element `x` of the RSA group Z_N to its "coset 
+    ///      representative", defined to be min(x mod N, -x mod N). This ensures
+    ///      that the low-order assumption is not trivially false, see Section 6:
+    ///      http://crypto.stanford.edu/~dabo/papers/VDFsurvey.pdf
     function normalize(
         uint256[4] memory x,
         uint256[4] memory modulus
