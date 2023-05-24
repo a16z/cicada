@@ -1,6 +1,6 @@
 # Cicada
 
-Cicada is a private on-chain voting protocol based on [homomorphic time-lock puzzles](https://eprint.iacr.org/2019/635.pdf). 
+[Cicada](https://a16zcrypto.com/posts/article/building-cicada-private-on-chain-voting-using-time-lock-puzzles/) is a private on-chain voting protocol based on [homomorphic time-lock puzzles](https://eprint.iacr.org/2019/635.pdf). 
 
 ## Quickstart
 
@@ -138,10 +138,6 @@ To accomplish this, we can combine the homomorphic time-lock puzzle scheme with 
 This way, even if a ballot is decrypted, all it would reveal is that _someone_ voted that way –– which is already known from the tally.
 
 We provide an example contract using [Semaphore](https://semaphore.appliedzkp.org/) for anonymity, but you can plug in your ZK set membership solution of choice.
-
-### Variants and tradeoffs
-
-TODO
 
 ## This repo
 
