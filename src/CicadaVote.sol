@@ -156,10 +156,11 @@ abstract contract CicadaVote {
         ) {
             revert VoteIsNotOngoing();
         }
-        bytes32 parametersHash = keccak256(abi.encode(pp, msg.sender));
+        bytes32 parametersHash = keccak256(abi.encode(pp));
         if (parametersHash != vote.parametersHash) {
             revert ParametersHashMismatch();
         }
+        parametersHash = keccak256(abi.encode(pp, msg.sender));
         _verifyBallotValidity(pp, parametersHash, ballot, PoV);
         vote.numVotes++;
         _updateTally(pp, vote.tally, ballot);
@@ -187,10 +188,11 @@ abstract contract CicadaVote {
         if (block.timestamp < vote.endTime) {
             revert VoteHasNotEnded();
         }
-        bytes32 parametersHash = keccak256(abi.encode(pp, msg.sender));
+        bytes32 parametersHash = keccak256(abi.encode(pp));
         if (parametersHash != vote.parametersHash) {
             revert ParametersHashMismatch();
         }
+        parametersHash = keccak256(abi.encode(pp, msg.sender));
         if (vote.isFinalized) {
             revert VoteAlreadyFinalized();
         }
