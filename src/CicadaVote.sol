@@ -156,7 +156,7 @@ abstract contract CicadaVote {
         ) {
             revert VoteIsNotOngoing();
         }
-        bytes32 parametersHash = keccak256(abi.encode(pp));
+        bytes32 parametersHash = keccak256(abi.encode(pp, msg.sender));
         if (parametersHash != vote.parametersHash) {
             revert ParametersHashMismatch();
         }
@@ -187,7 +187,7 @@ abstract contract CicadaVote {
         if (block.timestamp < vote.endTime) {
             revert VoteHasNotEnded();
         }
-        bytes32 parametersHash = keccak256(abi.encode(pp));
+        bytes32 parametersHash = keccak256(abi.encode(pp, msg.sender));
         if (parametersHash != vote.parametersHash) {
             revert ParametersHashMismatch();
         }
@@ -321,7 +321,7 @@ abstract contract CicadaVote {
         internal
         view
     {
-        bytes32 parametersHash = keccak256(abi.encode(pp));
+        bytes32 parametersHash = keccak256(abi.encode(pp, msg.sender));
         _verifyExponentiation(pp, parametersHash, Z.u, w, PoE);
 
         // Check v = w * y^s (mod N)
