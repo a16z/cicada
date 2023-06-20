@@ -192,7 +192,7 @@ abstract contract CicadaVote {
         if (parametersHash != vote.parametersHash) {
             revert ParametersHashMismatch();
         }
-        parametersHash = keccak256(abi.encode(pp, msg.sender));
+        
         if (vote.isFinalized) {
             revert VoteAlreadyFinalized();
         }
@@ -323,7 +323,7 @@ abstract contract CicadaVote {
         internal
         view
     {
-        bytes32 parametersHash = keccak256(abi.encode(pp, msg.sender));
+        bytes32 parametersHash = keccak256(abi.encode(pp));
         _verifyExponentiation(pp, parametersHash, Z.u, w, PoE);
 
         // Check v = w * y^s (mod N)
