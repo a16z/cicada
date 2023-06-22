@@ -160,6 +160,7 @@ abstract contract CicadaVote {
         if (parametersHash != vote.parametersHash) {
             revert ParametersHashMismatch();
         }
+        parametersHash = keccak256(abi.encode(parametersHash, msg.sender));
         _verifyBallotValidity(pp, parametersHash, ballot, PoV);
         vote.numVotes++;
         _updateTally(pp, vote.tally, ballot);
@@ -191,6 +192,7 @@ abstract contract CicadaVote {
         if (parametersHash != vote.parametersHash) {
             revert ParametersHashMismatch();
         }
+        
         if (vote.isFinalized) {
             revert VoteAlreadyFinalized();
         }

@@ -1,0 +1,179 @@
+// SPDX-License-Identifier: AGPL-3.0
+pragma solidity ^0.8;
+
+import 'forge-std/Test.sol';
+import '../src/CicadaVote.sol';
+import '../src/LibUint1024.sol';
+
+
+contract VoteWrapper is CicadaVote {
+    function createVote(
+        CicadaVote.PublicParameters memory pp,
+        string memory description,
+        uint64 startTime,
+        uint64 votingPeriod
+    )
+        external
+    {
+        _createVote(pp, description, startTime, votingPeriod);
+    }
+
+    function castBallot(
+        uint256 voteId,
+        CicadaVote.PublicParameters memory pp,
+        CicadaVote.Puzzle memory ballot,
+        CicadaVote.ProofOfValidity memory PoV
+    )
+        external
+    {
+        _castBallot(voteId, pp, ballot, PoV);
+    }
+
+    function finalizeVote(
+        uint256 voteId,
+        CicadaVote.PublicParameters memory pp,
+        uint64 tallyPlaintext,
+        uint256[4] memory w,
+        CicadaVote.ProofOfExponentiation memory PoE
+    )
+        external
+    {
+        _finalizeVote(voteId, pp, tallyPlaintext, w, PoE);
+    }
+}
+
+contract EndToEndTest is Test {
+    using LibUint1024 for *;
+
+    VoteWrapper vote;
+
+    function setUp() external {
+        vote = new VoteWrapper();
+        vote.createVote(_getPublicParameters(), "test", 0, 5 days);
+    }
+
+    function testEndToEnd()
+        external
+    {
+        CicadaVote.PublicParameters memory pp = _getPublicParameters();
+        CicadaVote.Puzzle memory Z;
+        CicadaVote.ProofOfValidity memory PoV;
+
+        {% for ballot in ballots %}
+        Z.u = [
+            {% for element in ballot.u %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        Z.v = [
+            {% for element in ballot.v %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+
+        PoV.a_0 = [
+            {% for element in ballot.a0 %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        PoV.b_0 = [
+            {% for element in ballot.b0 %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        PoV.t_0 = [
+            {% for element in ballot.t0 %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        PoV.c_0 = {{ ballot.c0 }};
+
+        PoV.a_1 = [
+            {% for element in ballot.a1 %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        PoV.b_1 = [
+            {% for element in ballot.b1 %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        PoV.t_1 = [
+            {% for element in ballot.t1 %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        PoV.c_1 = {{ ballot.c1 }};
+
+        vote.castBallot(1, pp, Z, PoV);
+
+        {% endfor %}
+
+        uint64 s = {{ finalize.count }};
+        uint256[4] memory w = [
+            {% for element in finalize.w %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        
+        CicadaVote.ProofOfExponentiation memory PoE;
+        PoE.pi = [
+            {% for element in finalize.pi %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        PoE.j = {{ finalize.j }};
+        PoE.l = {{ finalize.l }};
+        
+        vm.warp(block.timestamp + 5 days);
+        vote.finalizeVote(1, pp, s, w, PoE);
+    }
+
+    function _getPublicParameters()
+        private
+        pure
+        returns (CicadaVote.PublicParameters memory pp)
+    {
+        pp.N = [
+            {% for element in pp.N %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.T = {{ pp.T }};
+        pp.g = [
+            {% for element in pp.g %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.h = [
+            {% for element in pp.h %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.y = [
+            {% for element in pp.y %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.yInv = [
+            {% for element in pp.yInv %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+    }
+}
