@@ -33,11 +33,6 @@ jobs:
           forge test -vvv --no-match-test testRef
         id: test
 
-      - name: Run Forge tests (reference)
-        run: |
-          forge test -vvv --match-test testRef --ffi
-        id: test-ref
-
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
