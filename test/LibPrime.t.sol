@@ -217,33 +217,19 @@ contract LibPrimeTest is Test {
         ));
     }
 
-    function testBitLen(uint256 x)
+    function testProveBitLen(uint256 x)
         external
     {
         vm.assume(x != 0);
         assertEq(lib.bitLen(x), _bitLenRef(x));
     }
 
-    function testTrailingZeros(uint256 x)
+    function testProveTrailingZeros(uint256 x)
         external
     {
         vm.assume(x != 0);
         assertEq(lib.trailingZeros(x), _trailingZerosRef(x));
     }
-
-    // function proveBitLen(uint256 x)
-    //     external
-    // {
-    //     require(x != 0);
-    //     assert(_bitLenRef(x) == LibPrime.bitLen(x));
-    // }
-
-    // function proveTrailingZeros(uint256 x)
-    //     external
-    // {
-    //     require(x != 0);
-    //     assert(_trailingZerosRef(x) == LibPrime.trailingZeros(x));
-    // }
 
     // ================================================================    
     
