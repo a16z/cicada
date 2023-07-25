@@ -39,10 +39,8 @@ jobs:
           python-version: "3.11"
 
       - name: Install Halmos
-        run: pip install git+https://github.com/a16z/halmos
+        run: pip install halmos
 
       - name: Run Halmos
-        run: |
-          halmos -v -st --contract LibUint1024Test --function testProve --loop 256 --test-parallel --solver-parallel --solver-timeout-assertion 80000
-          halmos -v -st --contract LibPrimeTest --function testProve --loop 256 --test-parallel
+        run: halmos --function testProve --loop 256 --error-unknown --test-parallel --solver-parallel --solver-timeout-assertion 0
         id: test-halmos
