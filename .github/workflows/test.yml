@@ -1,6 +1,10 @@
 name: test
 
-on: workflow_dispatch
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 env:
   FOUNDRY_PROFILE: ci
@@ -37,9 +41,14 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
+      
+      - name: Install dependencies
+        run: pip install argparse eth_abi halmos
 
-      - name: Install Halmos
-        run: pip install halmos
+      - name: Run Python reference tests
+        run: |
+          forge test -vvv --ffi --match-test testRef
+        id: test-ref
 
       - name: Run Halmos
         run: halmos --function testProve --loop 256 --error-unknown --test-parallel --solver-parallel --solver-timeout-assertion 0
