@@ -41,37 +41,37 @@ contract VerifyCumulativeBallotGeneratedTest is Test {
         pp.T = {{ T }};
         pp.N = [
             {% for element in N %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
 
             {% endfor %}
         ];
         pp.g = [
             {% for element in g %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
 
             {% endfor %}
         ];
         pp.h = [
             {% for element in h %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
 
             {% endfor %}
         ];
         pp.hInv = [
             {% for element in hInv %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
 
             {% endfor %}
         ];
         pp.y = [
             {% for element in y %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
 
             {% endfor %}
         ];
         pp.yInv = [
             {% for element in yInv %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
 
             {% endfor %}
         ];
@@ -80,13 +80,13 @@ contract VerifyCumulativeBallotGeneratedTest is Test {
         {% for puzzle in ballot %}
         ballot[{{ loop.index0 }}].u = [
             {% for element in puzzle.u %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
 
             {% endfor %}
         ];
         ballot[{{ loop.index0 }}].v = [
             {% for element in puzzle.v %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
 
             {% endfor %}
         ];
@@ -102,7 +102,7 @@ contract VerifyCumulativeBallotGeneratedTest is Test {
         {% for v in proofOfPos.squareDecomposition %}
         PoV.PoPosS[{{ outer_loop.index0 }}].squareDecomposition[{{ loop.index0 }}] = [
             {% for element in v %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
             
             {% endfor %}
         ];
@@ -111,61 +111,61 @@ contract VerifyCumulativeBallotGeneratedTest is Test {
         {% for proofOfSquare in proofOfPos.PoKSqS %}
         PoV.PoPosS[{{ outer_loop.index0 }}].PoKSqS[{{ loop.index0 }}].squareRoot = [
             {% for element in proofOfSquare.squareRoot %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
             
             {% endfor %}
         ];
         PoV.PoPosS[{{ outer_loop.index0 }}].PoKSqS[{{ loop.index0 }}].quotient = [
             {% for element in proofOfSquare.quotient %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
             
             {% endfor %}
         ];
         PoV.PoPosS[{{ outer_loop.index0 }}].PoKSqS[{{ loop.index0 }}].p1.A1 = [
             {% for element in proofOfSquare.A1 %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
             
             {% endfor %}
         ];
         PoV.PoPosS[{{ outer_loop.index0 }}].PoKSqS[{{ loop.index0 }}].p1.A2 = [
             {% for element in proofOfSquare.A2 %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
             
             {% endfor %}
         ];
         PoV.PoPosS[{{ outer_loop.index0 }}].PoKSqS[{{ loop.index0 }}].p1.A = [
             {% for element in proofOfSquare.A %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
             
             {% endfor %}
         ];
         PoV.PoPosS[{{ outer_loop.index0 }}].PoKSqS[{{ loop.index0 }}].p2.x1 = [
             {% for element in proofOfSquare.x1 %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
             
             {% endfor %}
         ];
         PoV.PoPosS[{{ outer_loop.index0 }}].PoKSqS[{{ loop.index0 }}].p2.x2 = [
             {% for element in proofOfSquare.x2 %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
             
             {% endfor %}
         ];
         PoV.PoPosS[{{ outer_loop.index0 }}].PoKSqS[{{ loop.index0 }}].p2.w1 = [
             {% for element in proofOfSquare.w1 %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
             
             {% endfor %}
         ];
         PoV.PoPosS[{{ outer_loop.index0 }}].PoKSqS[{{ loop.index0 }}].p2.w2 = [
             {% for element in proofOfSquare.w2 %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
             
             {% endfor %}
         ];
         PoV.PoPosS[{{ outer_loop.index0 }}].PoKSqS[{{ loop.index0 }}].p2.w = [
             {% for element in proofOfSquare.w %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
             
             {% endfor %}
         ];
@@ -175,55 +175,55 @@ contract VerifyCumulativeBallotGeneratedTest is Test {
 
         PoV.PoPosS[{{ outer_loop.index0 }}].PoKSEq.quotient = [
             {% for element in proofOfPos.PoKSEq.quotient %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
             
             {% endfor %}
         ];
         PoV.PoPosS[{{ outer_loop.index0 }}].PoKSEq.p1.A1 = [
             {% for element in proofOfPos.PoKSEq.A1 %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
 
             {% endfor %}
         ];
         PoV.PoPosS[{{ outer_loop.index0 }}].PoKSEq.p1.A2 = [
             {% for element in proofOfPos.PoKSEq.A2 %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
 
             {% endfor %}
         ];
         PoV.PoPosS[{{ outer_loop.index0 }}].PoKSEq.p1.A = [
             {% for element in proofOfPos.PoKSEq.A %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
 
             {% endfor %}
         ];
         PoV.PoPosS[{{ outer_loop.index0 }}].PoKSEq.p2.x1 = [
             {% for element in proofOfPos.PoKSEq.x1 %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
 
             {% endfor %}
         ];
         PoV.PoPosS[{{ outer_loop.index0 }}].PoKSEq.p2.x2 = [
             {% for element in proofOfPos.PoKSEq.x2 %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
 
             {% endfor %}
         ];
         PoV.PoPosS[{{ outer_loop.index0 }}].PoKSEq.p2.w1 = [
             {% for element in proofOfPos.PoKSEq.w1 %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
 
             {% endfor %}
         ];
         PoV.PoPosS[{{ outer_loop.index0 }}].PoKSEq.p2.w2 = [
             {% for element in proofOfPos.PoKSEq.w2 %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
 
             {% endfor %}
         ];
         PoV.PoPosS[{{ outer_loop.index0 }}].PoKSEq.p2.w = [
             {% for element in proofOfPos.PoKSEq.w %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
 
             {% endfor %}
         ];
@@ -235,25 +235,25 @@ contract VerifyCumulativeBallotGeneratedTest is Test {
         {% for PoPV in proofsOfValidity %}
         PoV.PoPV[{{ loop.index0 }}].a = [
             {% for element in PoPV.a %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
             
             {% endfor %}
         ];
         PoV.PoPV[{{ loop.index0 }}].b = [
             {% for element in PoPV.b %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
             
             {% endfor %}
         ];
         PoV.PoPV[{{ loop.index0 }}].alpha = [
             {% for element in PoPV.alpha %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
             
             {% endfor %}
         ];
         PoV.PoPV[{{ loop.index0 }}].beta = [
             {% for element in PoPV.beta %}
-            {{ element }}{% if loop.index != 4 %},{% endif %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
             
             {% endfor %}
         ];

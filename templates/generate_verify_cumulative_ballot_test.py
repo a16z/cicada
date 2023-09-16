@@ -23,8 +23,8 @@ def normalize(x, N):
     return x if x < N / 2 else N - x
 
 
-def gen_htlp(N, g, h, y, s):
-    r = random.randint(0, int(MAX_UINT256 // 3))
+def gen_htlp(N, g, h, y, s, rSplit=1):
+    r = random.randint(0, int(MAX_UINT256 // rSplit))
     u = normalize(pow(g, r, N), N)
     v = normalize(pow(h, r, N) * pow(y, s, N), N)
     return (u, v, r)
@@ -150,7 +150,7 @@ def proof_of_valid_htlp(Z, s, N, g, h, y, parametersHash):
     return PoPV
 
 
-def generate_ballot_test(numChoices, i):
+def generate_ballot_test(numChoices):
     # Public parameters
     # N = RSA.generate(1024).n
     N = 119811489572127862002400473548445165991417646257390315534749434310249361630773111446686986365667134131769700968038508003183790050995248795868556415935896469708804065561524199281221524011292023692346224158949981067042940731981798525413610618627831152737911921198417981708100865711902031939654050023574809255253
@@ -179,7 +179,7 @@ def generate_ballot_test(numChoices, i):
     proofsOfValidity = []
     R = 0
     for s in points:
-        (u, v, r) = Z = gen_htlp(N, g, h, y, s)
+        (u, v, r) = Z = gen_htlp(N, g, h, y, s, numChoices)
         puzzles.append({'u': u, 'v': v})
         (s_1, s_2, s_3) = square_decompose_legendre(s)
 
@@ -288,4 +288,4 @@ def render_template(
     print(rendered)
 
 
-generate_ballot_test(4, 1)
+generate_ballot_test(6)
