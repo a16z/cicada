@@ -124,6 +124,32 @@ def proof_of_equal_htlp(Z1, Z2, s, N, h, y, parametersHash):
     return PoKSEq
 
 
+def proof_of_valid_htlp(Z, s, N, g, h, y, parametersHash):
+    (_, _, r) = Z
+    t = random.randint(0, MAX_UINT256)
+    x = random.randint(0, MAX_UINT256)
+
+    a = normalize(pow(g, x, N), N)
+    b = normalize(pow(h, x, N) * pow(y, t, N), N)
+
+    e = int.from_bytes(Web3.solidityKeccak(
+        ['uint256[4]'] * 2 + ['bytes32'],
+        [to_uint_1024(a), to_uint_1024(b), parametersHash]
+    ), byteorder='big')
+
+    alpha = r * e + x
+    beta = s * e + t
+
+    PoPV = {
+        'a': a,
+        'b': b,
+        'alpha': alpha,
+        'beta': beta,
+    }
+
+    return PoPV
+
+
 def generate_ballot_test(numChoices, i):
     # Public parameters
     # N = RSA.generate(1024).n
@@ -150,6 +176,7 @@ def generate_ballot_test(numChoices, i):
 
     puzzles = []
     proofsOfPos = []
+    proofsOfValidity = []
     R = 0
     for s in points:
         (u, v, r) = Z = gen_htlp(N, g, h, y, s)
@@ -189,10 +216,18 @@ def generate_ballot_test(numChoices, i):
             'PoKSqS': proofsOfSquare,
             'PoKSEq': proofOfEquality
         })
+        proofsOfValidity.append(proof_of_valid_htlp(
+            Z, s, N, g, h, y, parametersHash))
         R += r
 
-    # pprint(puzzles)
-    # pprint(proofsOfPos)
+    render_template(T, N, g, h, hInv, y, yInv, numChoices,
+                    pointsPerVoter, puzzles, proofsOfPos, proofsOfValidity, R)
+
+
+def render_template(
+        T, N, g, h, hInv, y, yInv,
+        numChoices, pointsPerVoter,
+        puzzles, proofsOfPos, proofsOfValidity, R):
 
     [N, g, h, hInv, y, yInv] = map(
         lambda x: to_uint_1024(x),
@@ -242,10 +277,10 @@ def generate_ballot_test(numChoices, i):
     template = environment.get_template("VerifyCumulativeBallotTest.sol.jinja")
 
     rendered = template.render(
-        i=i,
         N=N, T=T, g=g, h=h, hInv=hInv, y=y, yInv=yInv,
         ballot=ballot,
         proofs=proofs,
+        proofsOfValidity=map(dict_to_uint_1024, proofsOfValidity),
         R=R,
         pointsPerVoter=pointsPerVoter,
         numChoices=numChoices

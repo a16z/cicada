@@ -2,18 +2,18 @@
 pragma solidity ^0.8;
 
 import 'forge-std/Test.sol';
-import '../src/CicadaVote.sol';
+import '../src/CicadaCumulativeVote.sol';
 import '../src/LibUint1024.sol';
 import '../src/LibSigmaProtocol.sol';
 
 
-contract VoteWrapper is CicadaVote {
+contract VoteWrapper is CicadaCumulativeVote {
 
     function verifyBallotValidity(
         PublicParameters calldata pp,
         bytes32 parametersHash,
         Puzzle[] calldata ballot,
-        ProofOfValidity calldata PoV,
+        ProofOfBallotValidity calldata PoV,
         uint64 pointsPerVoter
     )
         external
@@ -33,11 +33,11 @@ contract VerifyCumulativeBallotGeneratedTest is Test {
         vote = new VoteWrapper();
     }
 
-    function testVerifyCumulativeBallot{{ i }}()
+    function testVerifyCumulativeBallot()
         external
         view
     {
-        CicadaVote.PublicParameters memory pp;
+        CicadaCumulativeVote.PublicParameters memory pp;
         pp.T = {{ T }};
         pp.N = [
             {% for element in N %}
@@ -76,7 +76,7 @@ contract VerifyCumulativeBallotGeneratedTest is Test {
             {% endfor %}
         ];
 
-        CicadaVote.Puzzle[] memory ballot = new CicadaVote.Puzzle[]({{ numChoices }});
+        CicadaCumulativeVote.Puzzle[] memory ballot = new CicadaCumulativeVote.Puzzle[]({{ numChoices }});
         {% for puzzle in ballot %}
         ballot[{{ loop.index0 }}].u = [
             {% for element in puzzle.u %}
@@ -92,7 +92,7 @@ contract VerifyCumulativeBallotGeneratedTest is Test {
         ];
         {% endfor %}
 
-        CicadaVote.ProofOfValidity memory PoV;
+        CicadaCumulativeVote.ProofOfBallotValidity memory PoV;
         PoV.R = {{ R }};
 
         PoV.PoPosS = new LibSigmaProtocol.ProofOfPositivity[]({{ numChoices }});
@@ -229,6 +229,34 @@ contract VerifyCumulativeBallotGeneratedTest is Test {
         ];
         PoV.PoPosS[{{ outer_loop.index0 }}].PoKSEq.p2.wIsNegative = {{ proofOfPos.PoKSEq.wIsNegative }};
         PoV.PoPosS[{{ outer_loop.index0 }}].PoKSEq.p2.w2IsNegative = false;
+        {% endfor %}
+
+        PoV.PoPV = new LibSigmaProtocol.ProofOfPuzzleValidity[]({{ numChoices }});
+        {% for PoPV in proofsOfValidity %}
+        PoV.PoPV[{{ loop.index0 }}].a = [
+            {% for element in PoPV.a %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        PoV.PoPV[{{ loop.index0 }}].b = [
+            {% for element in PoPV.b %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        PoV.PoPV[{{ loop.index0 }}].alpha = [
+            {% for element in PoPV.alpha %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        PoV.PoPV[{{ loop.index0 }}].beta = [
+            {% for element in PoPV.beta %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
         {% endfor %}
         
         vote.verifyBallotValidity(pp, keccak256(abi.encode(pp)), ballot, PoV, {{ pointsPerVoter}});

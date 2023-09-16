@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8;
 
-import './CicadaVote.sol';
+import './CicadaCumulativeVote.sol';
 import './LibUint1024.sol';
 import './LibPrime.sol';
 
@@ -43,10 +43,52 @@ library LibSigmaProtocol {
         ProofOfEquality PoKSEq;
     }
 
-    function verifyProofOfPositivity(
-        CicadaVote.PublicParameters memory pp,
+    struct ProofOfPuzzleValidity {
+        uint256[4] a;
+        uint256[4] b;
+        uint256[4] alpha;
+        uint256[4] beta;
+    }
+
+    function verifyProofOfPuzzleValidity(
+        CicadaCumulativeVote.PublicParameters memory pp,
         bytes32 parametersHash,
-        CicadaVote.Puzzle memory Z,
+        CicadaCumulativeVote.Puzzle memory Z,
+        ProofOfPuzzleValidity memory PoPV
+    )
+        internal
+        view
+    {
+        uint256 e = uint256(keccak256(abi.encode(
+            PoPV.a, 
+            PoPV.b, 
+            parametersHash
+        )));
+
+        uint256[4] memory lhs = pp.g
+            .expMod(PoPV.alpha, pp.N)
+            .normalize(pp.N);
+        uint256[4] memory rhs = Z.u
+            .expMod(e, pp.N)
+            .mulMod(PoPV.a, pp.N)
+            .normalize(pp.N);
+        require(lhs.eq(rhs));
+
+        lhs = pp.h
+            .expMod(PoPV.alpha, pp.N)
+            .mulMod(pp.y.expMod(PoPV.beta, pp.N), pp.N)
+            .normalize(pp.N);
+        rhs = Z.v
+            .expMod(e, pp.N)
+            .mulMod(PoPV.b, pp.N)
+            .normalize(pp.N);
+        require(lhs.eq(rhs));
+    }
+
+    function verifyProofOfPositivity(
+        CicadaCumulativeVote.PublicParameters memory pp,
+        bytes32 parametersHash,
+        CicadaCumulativeVote.Puzzle memory Z,
         ProofOfPositivity memory PoPosS
     )
         internal
@@ -91,7 +133,7 @@ library LibSigmaProtocol {
     }
 
     function verifyProofOfSquare(
-        CicadaVote.PublicParameters memory pp,
+        CicadaCumulativeVote.PublicParameters memory pp,
         bytes32 parametersHash,
         uint256[4] memory squarePuzzle,
         ProofOfSquare memory PoKSqS
@@ -143,7 +185,7 @@ library LibSigmaProtocol {
     }
 
     function verifyProofOfEquality(
-        CicadaVote.PublicParameters memory pp,
+        CicadaCumulativeVote.PublicParameters memory pp,
         bytes32 parametersHash,
         uint256[4] memory Z1,
         uint256[4] memory Z2,

@@ -9,7 +9,7 @@ import './LibSigmaProtocol.sol';
 /// @dev The Cicada base contract. Note that the `createVote` and 
 ///      `castBallot` functions assume that access control is implemented
 ///      by the inheriting contract.
-abstract contract CicadaVote {
+abstract contract CicadaCumulativeVote {
     using LibUint1024 for *;
 
     struct PublicParameters {
@@ -33,7 +33,8 @@ abstract contract CicadaVote {
         uint256 l;
     }
 
-    struct ProofOfValidity {
+    struct ProofOfBallotValidity {
+        LibSigmaProtocol.ProofOfPuzzleValidity[] PoPV;
         LibSigmaProtocol.ProofOfPositivity[] PoPosS;
         uint256 R;
     }
@@ -149,12 +150,12 @@ abstract contract CicadaVote {
     /// @param voteId The vote to cast a ballot for.
     /// @param pp The public parameters used for the vote.
     /// @param ballot The time-lock puzzle encoding the ballot.
-    /// @param PoV The proof of ballot validity.
+    /// @param PoBV The proof of ballot validity.
     function _castBallot(
         uint256 voteId,
         PublicParameters memory pp,
         Puzzle[] memory ballot,
-        ProofOfValidity memory PoV
+        ProofOfBallotValidity memory PoBV
     )
         internal
     {
@@ -180,7 +181,7 @@ abstract contract CicadaVote {
             pp, 
             parametersHash, 
             ballot, 
-            PoV, 
+            PoBV, 
             vote.pointsPerVoter
         );
 
@@ -252,19 +253,22 @@ abstract contract CicadaVote {
     /// @param pp The public parameters used for the vote.
     /// @param parametersHash The hash of `pp`.
     /// @param ballot TODO
-    /// @param PoV The proof of ballot validity.
+    /// @param PoBV The proof of ballot validity.
     /// @param pointsPerVoter TODO
     function _verifyBallotValidity(
         PublicParameters memory pp,
         bytes32 parametersHash,
         Puzzle[] memory ballot,
-        ProofOfValidity memory PoV,
+        ProofOfBallotValidity memory PoBV,
         uint64 pointsPerVoter
     )
         internal
         view
     {
-        if (ballot.length != PoV.PoPosS.length) {
+        if (
+            ballot.length != PoBV.PoPosS.length ||
+            ballot.length != PoBV.PoPV.length
+        ) {
             revert InvalidBallot();
         }
 
@@ -275,7 +279,7 @@ abstract contract CicadaVote {
         for (uint256 i = 1; i != ballot.length; i++) {
             vProduct = vProduct.mulMod(ballot[i].v, pp.N);
         }
-        uint256[4] memory rhs = pp.h.expMod(PoV.R, pp.N)
+        uint256[4] memory rhs = pp.h.expMod(PoBV.R, pp.N)
             .mulMod(pp.y.expMod(pointsPerVoter, pp.N), pp.N);
         if (!vProduct.normalize(pp.N).eq(rhs.normalize(pp.N))) {
             revert InvalidBallot();
@@ -288,11 +292,15 @@ abstract contract CicadaVote {
                 pp, 
                 parametersHash, 
                 ballot[i], 
-                PoV.PoPosS[i]
+                PoBV.PoPosS[i]
+            );
+            LibSigmaProtocol.verifyProofOfPuzzleValidity(
+                pp,
+                parametersHash,
+                ballot[i],
+                PoBV.PoPV[i]
             );
         }
-
-        // Check that u and v are consistent
     }
 
     /// @dev Verifies that `s` is the plaintext tally encoded in the 
