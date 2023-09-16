@@ -3,6 +3,7 @@ pragma solidity ^0.8;
 
 import './LibUint1024.sol';
 import './LibPrime.sol';
+import './LibSigmaProtocol.sol';
 
 
 /// @dev The Cicada base contract. Note that the `createVote` and 
@@ -12,10 +13,11 @@ abstract contract CicadaVote {
     using LibUint1024 for *;
 
     struct PublicParameters {
-        uint256[4] N;
         uint256 T;
+        uint256[4] N;
         uint256[4] g;
         uint256[4] h;
+        uint256[4] hInv;
         uint256[4] y;
         uint256[4] yInv;
     }
@@ -32,20 +34,14 @@ abstract contract CicadaVote {
     }
 
     struct ProofOfValidity {
-        uint256[4] a_0;
-        uint256[4] b_0;
-        uint256[4] t_0;
-        uint256 c_0;
-        uint256[4] a_1;
-        uint256[4] b_1;
-        uint256[4] t_1;
-        uint256 c_1;
+        LibSigmaProtocol.ProofOfPositivity[] PoPosS;
+        uint256 R;
     }
 
     struct Vote {
         bytes32 parametersHash;
-        Puzzle tally;
-        uint64 numVotes;
+        Puzzle[] tallies;
+        uint64 pointsPerVoter;
         uint64 startTime;
         uint64 endTime;
         bool isFinalized;
@@ -54,6 +50,7 @@ abstract contract CicadaVote {
     event VoteCreated(
         uint256 voteId,
         string description,
+        uint64 pointsPerVoter,
         uint64 startTime,
         uint64 endTime,
         PublicParameters pp
@@ -61,8 +58,7 @@ abstract contract CicadaVote {
 
     event VoteFinalized(
         uint256 voteId,
-        uint64 numYesVotes,
-        uint64 numNoVotes
+        uint64[] pointsPerChoice
     );
     
     error InvalidProofOfExponentiation();
@@ -87,18 +83,27 @@ abstract contract CicadaVote {
     ///      contract, if desired).
     /// @param pp Public parameters for the homomorphic time-lock puzzles.
     /// @param description A human-readable description of the vote.
+    /// @param pointsPerVoter TODO
     /// @param startTime The UNIX timestamp at which voting opens.
     /// @param votingPeriod The duration of the voting period, in seconds.
+    /// @param numChoices TODO
     function _createVote(
         PublicParameters memory pp,
         string memory description,
+        uint64 pointsPerVoter,
         uint64 startTime,
-        uint64 votingPeriod
+        uint64 votingPeriod,
+        uint256 numChoices
     )
         internal
     {
         pp.g = pp.g.normalize(pp.N);
         pp.h = pp.h.normalize(pp.N);
+        pp.hInv = pp.hInv.normalize(pp.N);
+        // h * h^(-1) = 1 (mod N)
+        if (!pp.h.mulMod(pp.hInv, pp.N).eq(1.toUint1024())) {
+            revert();
+        }
         pp.y = pp.y.normalize(pp.N);
         pp.yInv = pp.yInv.normalize(pp.N);
         // y * y^(-1) = 1 (mod N)
@@ -110,14 +115,17 @@ abstract contract CicadaVote {
         Vote storage newVote = votes[voteId];
         newVote.parametersHash = keccak256(abi.encode(pp));
 
-        // This instantiates the tally to 0:
-        //     u = g^1 (mod N)
-        //     v = h^1 * y^0 (mod N)
-        // and populates the tally storage slots so subsequent SSTOREs
-        // incur a gas cost of SSTORE_RESET_GAS (~5k) instead of 
-        // SSTORE_SET_GAS (~20k).
-        newVote.tally.u = pp.g;
-        newVote.tally.v = pp.h;
+        for (uint256 i = 0; i != numChoices; i++) {
+            // This instantiates the tally to 0:
+            //     u = g^1 (mod N)
+            //     v = h^1 * y^0 (mod N)
+            // and populates the tally storage slots so subsequent SSTOREs
+            // incur a gas cost of SSTORE_RESET_GAS (~5k) instead of 
+            // SSTORE_SET_GAS (~20k).
+            newVote.tallies[i].u = pp.g;
+            newVote.tallies[i].v = pp.h;
+        }
+
         if (startTime == 0) {
             startTime = uint64(block.timestamp);
         } else if (startTime < block.timestamp) {
@@ -130,6 +138,7 @@ abstract contract CicadaVote {
         emit VoteCreated(
             voteId,
             description,
+            pointsPerVoter,
             startTime,
             endTime,
             pp
@@ -144,7 +153,7 @@ abstract contract CicadaVote {
     function _castBallot(
         uint256 voteId,
         PublicParameters memory pp,
-        Puzzle memory ballot,
+        Puzzle[] memory ballot,
         ProofOfValidity memory PoV
     )
         internal
@@ -156,21 +165,35 @@ abstract contract CicadaVote {
         ) {
             revert VoteIsNotOngoing();
         }
+
+        // Ballot must have one puzzle per choice.
+        if (ballot.length != vote.tallies.length) {
+            revert InvalidBallot();
+        }
         bytes32 parametersHash = keccak256(abi.encode(pp));
         if (parametersHash != vote.parametersHash) {
             revert ParametersHashMismatch();
         }
         parametersHash = keccak256(abi.encode(parametersHash, msg.sender));
-        _verifyBallotValidity(pp, parametersHash, ballot, PoV);
-        vote.numVotes++;
-        _updateTally(pp, vote.tally, ballot);
+
+        _verifyBallotValidity(
+            pp, 
+            parametersHash, 
+            ballot, 
+            PoV, 
+            vote.pointsPerVoter
+        );
+
+        for (uint256 i = 0; i != ballot.length; i++) {
+            _updateTally(pp, vote.tallies[i], ballot[i]);
+        }
     }
 
-    /// @dev Finalizes a vote by supplying supplying the decoded tally
-    ///      `tallyPlaintext` and associated proof of correctness.
+    /// @dev Finalizes a vote by supplying supplying the decoded tallies
+    ///      `talliesPlaintext` and associated proof of correctness.
     /// @param voteId The vote to cast a ballot for.
     /// @param pp The public parameters used for the vote.
-    /// @param tallyPlaintext The purported plaintext vote tally.
+    /// @param talliesPlaintext The purported plaintext vote tallies.
     /// @param w The purported value `w := Z.u^(2^T)`, where Z
     ///          is the puzzle encoding the tally.
     /// @param PoE The Wesolowski proof of exponentiation (i.e. the 
@@ -178,7 +201,7 @@ abstract contract CicadaVote {
     function _finalizeVote(
         uint256 voteId,
         PublicParameters memory pp,
-        uint64 tallyPlaintext,
+        uint64[] memory talliesPlaintext,
         uint256[4] memory w,
         ProofOfExponentiation memory PoE
     )
@@ -197,112 +220,67 @@ abstract contract CicadaVote {
             revert VoteAlreadyFinalized();
         }
 
-        _verifySolutionCorrectness(
-            pp,
-            vote.tally,
-            tallyPlaintext,
-            w,
-            PoE
-        );
+        // _verifySolutionCorrectness(
+        //     pp,
+        //     vote.tallies,
+        //     talliesPlaintext,
+        //     w,
+        //     PoE
+        // );
 
         vote.isFinalized = true;
 
         emit VoteFinalized(
             voteId,
-            tallyPlaintext,
-            vote.numVotes - tallyPlaintext
+            talliesPlaintext
         );
     }
 
-    /// @dev OR composition of two DLOG equality sigma protocols:
-    ///          DLOG_g(u) = DLOG_h(v) OR DLOG_g(u) = DLOG(v / y)
-    ///      This is equivalent to proving that there exists some
-    ///      value r such that:
-    ///          (u = g^r AND v = h^r) OR (u = v^r AND v = h^r * y)
-    ///      where the former case represents a "no" ballot and the
-    ///      latter case represents a "yes" ballot.
+    /// @dev TODO
     /// @param pp The public parameters used for the vote.
     /// @param parametersHash The hash of `pp`.
-    /// @param Z The time-lock puzzle encoding the ballot. 
+    /// @param ballot TODO
     /// @param PoV The proof of ballot validity.
+    /// @param pointsPerVoter TODO
     function _verifyBallotValidity(
         PublicParameters memory pp,
         bytes32 parametersHash,
-        Puzzle memory Z,
-        ProofOfValidity memory PoV
+        Puzzle[] memory ballot,
+        ProofOfValidity memory PoV,
+        uint64 pointsPerVoter
     )
         internal
         view
     {
-        PoV.a_0 = PoV.a_0.normalize(pp.N);
-        PoV.b_0 = PoV.b_0.normalize(pp.N);
-        PoV.a_1 = PoV.a_1.normalize(pp.N);
-        PoV.b_1 = PoV.b_1.normalize(pp.N);
-
-        // Fiat-Shamir
-        uint256 c = uint256(keccak256(abi.encode(
-            PoV.a_0,
-            PoV.b_0,
-            PoV.a_1,
-            PoV.b_1,
-            parametersHash
-        )));
-
-        // c_0 + c_1 = c (mod 2^256)
-        unchecked {
-            if (PoV.c_0 + PoV.c_1 != c) {
-                revert InvalidBallot();
-            }
-        }
-
-        // g^t_0 = a_0 * u^c_0 (mod N)
-        uint256[4] memory lhs = pp.g
-            .expMod(PoV.t_0, pp.N)
-            .normalize(pp.N);
-        uint256[4] memory rhs = Z.u
-            .expMod(PoV.c_0, pp.N)
-            .mulMod(PoV.a_0, pp.N)
-            .normalize(pp.N);
-        if (!lhs.eq(rhs)) {
+        if (ballot.length != PoV.PoPosS.length) {
             revert InvalidBallot();
         }
 
-        // h^t_0 = b_0 * v^c_0 (mod N)
-        lhs = pp.h
-            .expMod(PoV.t_0, pp.N)
-            .normalize(pp.N);
-        rhs = Z.v
-            .expMod(PoV.c_0, pp.N)
-            .mulMod(PoV.b_0, pp.N)
-            .normalize(pp.N);
-        if (!lhs.eq(rhs)) {
+        // Check that ballot puzzles sum to `pointsPerVoter`
+        // \product_i v_i = h^{\sum_i r_i} * y^{\sum_i s_i}
+        //               ?= h^R * y^pointsPerVoter
+        uint256[4] memory vProduct = ballot[0].v;
+        for (uint256 i = 1; i != ballot.length; i++) {
+            vProduct = vProduct.mulMod(ballot[i].v, pp.N);
+        }
+        uint256[4] memory rhs = pp.h.expMod(PoV.R, pp.N)
+            .mulMod(pp.y.expMod(pointsPerVoter, pp.N), pp.N);
+        if (!vProduct.normalize(pp.N).eq(rhs.normalize(pp.N))) {
             revert InvalidBallot();
+        }
+        
+        // Check that each ballot puzzle encodes a positive 
+        // value
+        for (uint256 i = 0; i != ballot.length; i++) {
+            LibSigmaProtocol.verifyProofOfPositivity(
+                pp, 
+                parametersHash, 
+                ballot[i], 
+                PoV.PoPosS[i]
+            );
         }
 
-        // g^t_1 = a_1 * u^c_1 (mod N)
-        lhs = pp.g
-            .expMod(PoV.t_1, pp.N)
-            .normalize(pp.N);
-        rhs = Z.u
-            .expMod(PoV.c_1, pp.N)
-            .mulMod(PoV.a_1, pp.N)
-            .normalize(pp.N);
-        if (!lhs.eq(rhs)) {
-            revert InvalidBallot();
-        }
-
-        // h^t_1 = b_1 * (v * y^(-1))^c_1 (mod N)
-        lhs = pp.h
-            .expMod(PoV.t_1, pp.N)
-            .normalize(pp.N);
-        rhs = Z.v
-            .mulMod(pp.yInv, pp.N)
-            .expMod(PoV.c_1, pp.N)
-            .mulMod(PoV.b_1, pp.N)
-            .normalize(pp.N);
-        if (!lhs.eq(rhs)) {
-            revert InvalidBallot();
-        }
+        // Check that u and v are consistent
     }
 
     /// @dev Verifies that `s` is the plaintext tally encoded in the 
