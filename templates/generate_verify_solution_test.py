@@ -26,13 +26,14 @@ def generate_proof_of_exponentiation_test(i):
     T = random.randint(1000, 100000)
     g = normalize(random.randint(0, N), N)
     h = normalize(pow(g, 2 ** T, N), N)
+    hInv = normalize(pow(h, -1, N), N)
     y = normalize(random.randint(0, N), N)
     yInv = normalize(pow(y, -1, N), N)
 
     parametersHash = Web3.solidityKeccak(
-        ['uint256[4]', 'uint256', 'uint256[4]',
-            'uint256[4]', 'uint256[4]', 'uint256[4]'],
-        [to_uint_1024(N), T, to_uint_1024(g), to_uint_1024(h), to_uint_1024(y), to_uint_1024(yInv)]
+        ['uint256'] + ['uint256[4]'] * 6,
+        [T, to_uint_1024(N), to_uint_1024(g), to_uint_1024(h), to_uint_1024(hInv),
+         to_uint_1024(y), to_uint_1024(yInv)]
     )
 
     r = random.randint(0, MAX_UINT256)
@@ -70,6 +71,7 @@ def generate_proof_of_exponentiation_test(i):
     #     'T': T,
     #     'g': g,
     #     'h': h,
+    #     'hInv': hInv,
     #     'y': y,
     #     'yInv': yInv,
     #     'r': r,
@@ -81,13 +83,13 @@ def generate_proof_of_exponentiation_test(i):
     #     'j': j,
     #     'l': l
     # })
-    [N, g, h, y, yInv, u, w, v, pi] = map(
+    [N, g, h, hInv, y, yInv, u, w, v, pi] = map(
         lambda x: to_uint_1024(x),
-        [N, g, h, y, yInv, u, w, v, pi]
+        [N, g, h, hInv, y, yInv, u, w, v, pi]
     )
     rendered = template.render(
         i=i,
-        N=N, T=T, g=g, h=h, y=y, yInv=yInv,
+        N=N, T=T, g=g, h=h, hInv=hInv, y=y, yInv=yInv,
         u=u, w=w, v=v, s=s,
         pi=pi, j=j, l=l
     )

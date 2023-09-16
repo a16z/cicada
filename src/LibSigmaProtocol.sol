@@ -50,6 +50,39 @@ library LibSigmaProtocol {
         uint256[4] beta;
     }
 
+    struct ProofOfExponentiation {
+        uint256[4] pi;
+        uint256 j;
+        uint256 l;
+    }
+
+    // Verifies the Wesolowski proof of exponentiation that:
+    //     u^(2^T) = w (mod N)
+    // See Section 2.1 of http://crypto.stanford.edu/~dabo/papers/VDFsurvey.pdf
+    function verifyExponentiation(
+        CicadaCumulativeVote.PublicParameters memory pp,
+        bytes32 parametersHash,
+        uint256[4] memory u,
+        uint256[4] memory w,
+        ProofOfExponentiation memory PoE
+    )
+        internal
+        view
+    {
+        w = w.normalize(pp.N);
+        // Fiat-Shamir random prime
+        uint256 l = PoE.l;
+        LibPrime.checkHashToPrime(abi.encode(u, w, parametersHash, PoE.j), l);
+
+        uint256 r = _expMod(2, pp.T, l); // r = 2^T (mod l)
+        // Check w = π^l * u^r (mod N)
+        uint256[4] memory rhs = PoE.pi
+            .expMod(l, pp.N)
+            .mulMod(u.expMod(r, pp.N), pp.N)
+            .normalize(pp.N);
+        require(w.eq(rhs));
+    }
+
     function verifyProofOfPuzzleValidity(
         CicadaCumulativeVote.PublicParameters memory pp,
         bytes32 parametersHash,
@@ -226,5 +259,31 @@ library LibSigmaProtocol {
             rhs = pp.h.expMod(PoKSEq.p2.w, pp.N).normalize(pp.N);
         }
         require(lhs.eq(rhs));
+    }
+
+    // Computes (base ** exponent) % modulus
+    function _expMod(uint256 base, uint256 exponent, uint256 modulus)
+        private
+        view
+        returns (uint256 result)
+    {
+        assembly { 
+            // Get free memory pointer
+            let p := mload(0x40)
+            // Store parameters for the EXPMOD (0x05) precompile
+            mstore(p, 0x20)                    // Length of Base
+            mstore(add(p, 0x20), 0x20)         // Length of Exponent
+            mstore(add(p, 0x40), 0x20)         // Length of Modulus
+            mstore(add(p, 0x60), base)         // Base
+            mstore(add(p, 0x80), exponent)     // Exponent
+            mstore(add(p, 0xa0), modulus)      // Modulus
+            // Call 0x05 (EXPMOD) precompile
+            if iszero(staticcall(gas(), 0x05, p, 0xc0, 0, 0x20)) {
+                revert(0, 0)
+            }
+            result := mload(0)
+            // Update free memory pointer
+            mstore(0x40, add(p, 0xc0))
+        }
     }
 }

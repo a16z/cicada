@@ -19,7 +19,13 @@
         pp.h = [
             {% for element in h %}
             {{ element }}{% if loop.index != 4 %},{% endif %}
-
+            
+            {% endfor %}
+        ];
+        pp.hInv = [
+            {% for element in hInv %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+            
             {% endfor %}
         ];
         pp.y = [
