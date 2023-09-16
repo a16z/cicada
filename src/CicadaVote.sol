@@ -58,7 +58,7 @@ abstract contract CicadaVote {
 
     event VoteFinalized(
         uint256 voteId,
-        uint64[] pointsPerChoice
+        uint256[] pointsPerChoice
     );
     
     error InvalidProofOfExponentiation();
@@ -201,13 +201,13 @@ abstract contract CicadaVote {
     function _finalizeVote(
         uint256 voteId,
         PublicParameters memory pp,
-        uint64[] memory talliesPlaintext,
-        uint256[4] memory w,
-        ProofOfExponentiation memory PoE
+        uint256[] memory talliesPlaintext,
+        uint256[4][] memory w,
+        ProofOfExponentiation[] memory PoE
     )
         internal
     {
-        Vote storage vote = votes[voteId];        
+        Vote storage vote = votes[voteId];
         if (block.timestamp < vote.endTime) {
             revert VoteHasNotEnded();
         }
@@ -219,14 +219,26 @@ abstract contract CicadaVote {
         if (vote.isFinalized) {
             revert VoteAlreadyFinalized();
         }
+        
+        Puzzle[] memory tallies = vote.tallies;
+        if (
+            tallies.length != talliesPlaintext.length ||
+            talliesPlaintext.length != w.length ||
+            w.length != PoE.length
+        ) {
+            revert("Array length mismatch");
+        }
 
-        // _verifySolutionCorrectness(
-        //     pp,
-        //     vote.tallies,
-        //     talliesPlaintext,
-        //     w,
-        //     PoE
-        // );
+        for (uint256 i = 0; i != tallies.length; i++) {
+            _verifySolutionCorrectness(
+                pp,
+                parametersHash,
+                tallies[i],
+                talliesPlaintext[i],
+                w[i],
+                PoE[i]
+            );
+        }
 
         vote.isFinalized = true;
 
@@ -293,6 +305,7 @@ abstract contract CicadaVote {
     ///        proof that `w = Z.u^(2^T)`)
     function _verifySolutionCorrectness(
         PublicParameters memory pp,
+        bytes32 parametersHash,
         Puzzle memory Z,
         uint256 s,
         uint256[4] memory w,
@@ -301,7 +314,6 @@ abstract contract CicadaVote {
         internal
         view
     {
-        bytes32 parametersHash = keccak256(abi.encode(pp));
         _verifyExponentiation(pp, parametersHash, Z.u, w, PoE);
 
         // Check v = w * y^s (mod N)
