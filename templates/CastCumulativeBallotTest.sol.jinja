@@ -7,7 +7,7 @@ import '../src/LibUint1024.sol';
 import '../src/LibSigmaProtocol.sol';
 
 
-contract VoteWrapper is CicadaCumulativeVote {  
+contract VoteWrapper is CicadaCumulativeVote {
     function createVote(PublicParameters calldata pp)
         external
     {

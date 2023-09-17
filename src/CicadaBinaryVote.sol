@@ -8,7 +8,7 @@ import './LibPrime.sol';
 /// @dev The Cicada base contract. Note that the `createVote` and 
 ///      `castBallot` functions assume that access control is implemented
 ///      by the inheriting contract.
-abstract contract CicadaVote {
+abstract contract CicadaBinaryVote {
     using LibUint1024 for *;
 
     struct PublicParameters {
