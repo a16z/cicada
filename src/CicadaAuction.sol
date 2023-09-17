@@ -12,8 +12,8 @@ abstract contract CicadaAuction {
     using LibUint1024 for *;
 
     struct PublicParameters {
-        uint256[4] N;
         uint256 T;
+        uint256[4] N;
         uint256[4] g;
         uint256[4] h;
         uint256[4] y;
@@ -87,7 +87,7 @@ abstract contract CicadaAuction {
         pp.yInv = pp.yInv.normalize(pp.N);
         // y * y^(-1) = 1 (mod N)
         if (!pp.y.mulMod(pp.yInv, pp.N).eq(1.toUint1024())) {
-            revert();
+            revert("Invalid yInv");
         }
 
         uint256 auctionId = nextAuctionId++;

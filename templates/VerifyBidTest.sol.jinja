@@ -1,0 +1,156 @@
+// SPDX-License-Identifier: AGPL-3.0
+pragma solidity ^0.8;
+
+import 'forge-std/Test.sol';
+import '../src/CicadaAuction.sol';
+import '../src/LibUint1024.sol';
+import '../src/LibSigmaProtocol.sol';
+
+
+contract AuctionWrapper is CicadaAuction {
+    function createAuction(
+        PublicParameters calldata pp,
+        address[] memory bidders,
+        uint256 numBidBits
+    )
+        external
+    {
+        _createAuction(
+            pp,
+            0,
+            30 minutes,
+            bidders,
+            numBidBits
+        );
+    }
+
+    function placeBid(
+        uint256 auctionId,
+        PublicParameters calldata pp,
+        Puzzle[] calldata bid,
+        ProofOfValidity[] calldata proofs
+    )
+        external
+    {
+        _placeBid(auctionId, pp, bid, proofs);
+    }
+}
+
+
+contract VerifyBidGeneratedTest is Test {
+    using LibUint1024 for *;
+
+    AuctionWrapper auction;
+
+    function setUp() external {
+        auction = new AuctionWrapper();
+        address[] memory bidders = new address[](3);
+        bidders[1] = address(this);
+        auction.createAuction(
+            _publicParameters(),
+            bidders,
+            {{ numBidBits }}
+        );
+    }
+
+    function _publicParameters() private pure returns (CicadaAuction.PublicParameters memory pp) {
+        pp.T = {{ T }};
+        pp.N = [
+            {% for element in N %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.g = [
+            {% for element in g %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.h = [
+            {% for element in h %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.y = [
+            {% for element in y %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.yInv = [
+            {% for element in yInv %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+    }
+
+    function testVerifyBid()
+        external
+    {
+        CicadaAuction.PublicParameters memory pp = _publicParameters();
+
+        CicadaAuction.Puzzle[] memory bid = new CicadaAuction.Puzzle[]({{ numBidBits }});
+        {% for puzzle in puzzles %}
+        bid[{{ loop.index0 }}].u = [
+            {% for element in puzzle.u %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        bid[{{ loop.index0 }}].v = [
+            {% for element in puzzle.v %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        {% endfor %}
+
+        CicadaAuction.ProofOfValidity[] memory proofs = new CicadaAuction.ProofOfValidity[]({{ numBidBits }});
+        {% for proof in proofs %}
+        proofs[{{ loop.index0 }}].a_0 = [
+            {% for element in proof.a0 %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        proofs[{{ loop.index0 }}].b_0 = [
+            {% for element in proof.b0 %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        proofs[{{ loop.index0 }}].t_0 = [
+            {% for element in proof.t0 %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        proofs[{{ loop.index0 }}].c_0 = {{ proof.c0 }};
+
+        proofs[{{ loop.index0 }}].a_1 = [
+            {% for element in proof.a1 %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        proofs[{{ loop.index0 }}].b_1 = [
+            {% for element in proof.b1 %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        proofs[{{ loop.index0 }}].t_1 = [
+            {% for element in proof.t1 %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        proofs[{{ loop.index0 }}].c_1 = {{ proof.c1 }};
+        {% endfor %}
+
+        auction.placeBid(1, pp, bid, proofs);
+    }
+}
