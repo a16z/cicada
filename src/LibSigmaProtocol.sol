@@ -8,33 +8,22 @@ import './LibPrime.sol';
 library LibSigmaProtocol {
     using LibUint1024 for *;
 
-    struct ProverMessage1 {
+    struct ProofOfSquare {
+        uint256[4] squareRoot;
         uint256[4] A1;
         uint256[4] A2;
-        uint256[4] A;
-    }
-
-    struct ProverMessage2 {
-        uint256[4] x1;
-        uint256[4] x2;
+        uint256[4] x;
         uint256[4] w1;
         uint256[4] w2;
-        uint256[4] w;
-        bool wIsNegative;
         bool w2IsNegative;
     }
 
-    struct ProofOfSquare {
-        uint256[4] squareRoot;
-        uint256[4] quotient;
-        ProverMessage1 p1;
-        ProverMessage2 p2;
-    }
-
     struct ProofOfEquality {
-        uint256[4] quotient;
-        ProverMessage1 p1;
-        ProverMessage2 p2;
+        uint256[4] A1;
+        uint256[4] A2;
+        uint256[4] x;
+        uint256[4] w1;
+        uint256[4] w2;
     }
 
     struct ProofOfPositivity {
@@ -177,44 +166,29 @@ library LibSigmaProtocol {
         uint256[4] memory Z1 = PoKSqS.squareRoot;
         uint256[4] memory Z2 = squarePuzzle;
 
-        // quotient := Z1 / Z2
-        require(Z1.eq(
-            PoKSqS.quotient.mulMod(Z2, pp.N).normalize(pp.N)
-        ));
-
-        uint256 e = uint256(keccak256(abi.encode(PoKSqS.p1, parametersHash)));
+        uint256 e = uint256(keccak256(abi.encode(PoKSqS.A1, PoKSqS.A2, parametersHash)));
 
         uint256[4] memory lhs = Z1.expMod(e, pp.N)
-            .mulMod(PoKSqS.p1.A1, pp.N)
+            .mulMod(PoKSqS.A1, pp.N)
             .normalize(pp.N);
-        uint256[4] memory rhs = pp.h.expMod(PoKSqS.p2.w1, pp.N)
-            .mulMod(pp.y.expMod(PoKSqS.p2.x1, pp.N), pp.N)
+        uint256[4] memory rhs = pp.h.expMod(PoKSqS.w1, pp.N)
+            .mulMod(pp.y.expMod(PoKSqS.x, pp.N), pp.N)
             .normalize(pp.N);
         require(lhs.eq(rhs));
 
         lhs = Z2.expMod(e, pp.N)
-            .mulMod(PoKSqS.p1.A2, pp.N)
+            .mulMod(PoKSqS.A2, pp.N)
             .normalize(pp.N);
-        if (PoKSqS.p2.w2IsNegative) {
-            rhs = pp.hInv.expMod(PoKSqS.p2.w2, pp.N)
-                .mulMod(Z1.expMod(PoKSqS.p2.x2, pp.N), pp.N)
+        if (PoKSqS.w2IsNegative) {
+            rhs = pp.hInv.expMod(PoKSqS.w2, pp.N)
+                .mulMod(Z1.expMod(PoKSqS.x, pp.N), pp.N)
                 .normalize(pp.N);
-        } else {
-            rhs = pp.h.expMod(PoKSqS.p2.w2, pp.N)
-                .mulMod(Z1.expMod(PoKSqS.p2.x2, pp.N), pp.N)
+        } else {    
+            rhs = pp.h.expMod(PoKSqS.w2, pp.N)
+                .mulMod(Z1.expMod(PoKSqS.x, pp.N), pp.N)
                 .normalize(pp.N);
         }
         require(lhs.eq(rhs));
-
-        lhs = PoKSqS.quotient.expMod(e, pp.N)
-            .mulMod(PoKSqS.p1.A, pp.N)
-            .normalize(pp.N);
-        if (PoKSqS.p2.wIsNegative) {
-            rhs = pp.hInv.expMod(PoKSqS.p2.w, pp.N).normalize(pp.N);
-        } else {
-            rhs = pp.h.expMod(PoKSqS.p2.w, pp.N).normalize(pp.N);
-        }
-        // require(lhs.eq(rhs));
     }
 
     function verifyProofOfEquality(
@@ -227,37 +201,22 @@ library LibSigmaProtocol {
         internal
         view
     {
-        // quotient := Z1 / Z2
-        require(Z1.eq(
-            PoKSEq.quotient.mulMod(Z2, pp.N).normalize(pp.N)
-        ));
-
-        uint256 e = uint256(keccak256(abi.encode(PoKSEq.p1, parametersHash)));
+        uint256 e = uint256(keccak256(abi.encode(PoKSEq.A1, PoKSEq.A2, parametersHash)));
 
         uint256[4] memory lhs = Z1.expMod(e, pp.N)
-            .mulMod(PoKSEq.p1.A1, pp.N)
+            .mulMod(PoKSEq.A1, pp.N)
             .normalize(pp.N);
-        uint256[4] memory rhs = pp.h.expMod(PoKSEq.p2.w1, pp.N)
-            .mulMod(pp.y.expMod(PoKSEq.p2.x1, pp.N), pp.N)
+        uint256[4] memory rhs = pp.h.expMod(PoKSEq.w1, pp.N)
+            .mulMod(pp.y.expMod(PoKSEq.x, pp.N), pp.N)
             .normalize(pp.N);
         require(lhs.eq(rhs));
 
         lhs = Z2.expMod(e, pp.N)
-            .mulMod(PoKSEq.p1.A2, pp.N)
+            .mulMod(PoKSEq.A2, pp.N)
             .normalize(pp.N);
-        rhs = pp.h.expMod(PoKSEq.p2.w2, pp.N)
-            .mulMod(pp.y.expMod(PoKSEq.p2.x2, pp.N), pp.N)
+        rhs = pp.h.expMod(PoKSEq.w2, pp.N)
+            .mulMod(pp.y.expMod(PoKSEq.x, pp.N), pp.N)
             .normalize(pp.N);
-        require(lhs.eq(rhs));
-
-        lhs = PoKSEq.quotient.expMod(e, pp.N)
-            .mulMod(PoKSEq.p1.A, pp.N)
-            .normalize(pp.N);
-        if (PoKSEq.p2.wIsNegative) {
-            rhs = pp.hInv.expMod(PoKSEq.p2.w, pp.N).normalize(pp.N);
-        } else {
-            rhs = pp.h.expMod(PoKSEq.p2.w, pp.N).normalize(pp.N);
-        }
         require(lhs.eq(rhs));
     }
 

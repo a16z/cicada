@@ -47,78 +47,60 @@ def square_decompose_legendre(x):
 
 def proof_of_square_htlp(Z1, Z2, s, N, h, y, parametersHash):
     (_, v1, r1) = Z1
-    (_, v2, r2) = Z2
+    (_, _, r2) = Z2
 
-    [alpha1, alpha2, beta1, beta2, gamma] = [
-        random.randint(0, MAX_UINT256) for _ in range(5)]
+    [alpha1, alpha2, beta] = [
+        random.randint(0, MAX_UINT256) for _ in range(3)]
 
-    A1 = normalize(pow(h, alpha1, N) * pow(y, beta1, N), N)
-    A2 = normalize(pow(h, alpha2, N) * pow(v1, beta2, N), N)
-    A = normalize(pow(h, gamma, N), N)
+    A1 = normalize(pow(h, alpha1, N) * pow(y, beta, N), N)
+    A2 = normalize(pow(h, alpha2, N) * pow(v1, beta, N), N)
 
     e = int.from_bytes(Web3.solidityKeccak(
-        ['uint256[4]'] * 3 + ['bytes32'],
+        ['uint256[4]'] * 2 + ['bytes32'],
         [to_uint_1024(A1), to_uint_1024(
-            A2), to_uint_1024(A), parametersHash]
+            A2), parametersHash]
     ), byteorder='big')
 
-    w1 = alpha1 + e * r1
-    x1 = beta1 + e * s
-    w2 = alpha2 + e * (r2 - r1 * s)
-    x2 = beta2 + e * s
-    w = gamma + e * (r1 - r2)
-
-    quotient = normalize(v1 * pow(v2, -1, N), N)
+    w1 = r1 * e + alpha1
+    w2 = (r2 - r1 * s) * e + alpha2
+    x = s * e + beta
 
     return {
         'A1': A1,
         'A2': A2,
-        'A': A,
-        'x1': x1,
-        'x2': x2,
+        'x': x,
         'w1': w1,
         'w2': w2,
-        'w': w,
-        'quotient': quotient,
         'squareRoot': v1
     }
 
 
 def proof_of_equal_htlp(Z1, Z2, s, N, h, y, parametersHash):
-    (_, v1, r1) = Z1
-    (_, v2, r2) = Z2
+    (_, _, r1) = Z1
+    (_, _, r2) = Z2
 
-    [alpha1, alpha2, beta1, beta2, gamma] = [
-        random.randint(0, MAX_UINT256) for _ in range(5)]
+    [alpha1, alpha2, beta] = [
+        random.randint(0, MAX_UINT256) for _ in range(3)]
 
-    A1 = normalize(pow(h, alpha1, N) * pow(y, beta1, N), N)
-    A2 = normalize(pow(h, alpha2, N) * pow(y, beta2, N), N)
-    A = normalize(pow(h, gamma, N), N)
+    A1 = normalize(pow(h, alpha1, N) * pow(y, beta, N), N)
+    A2 = normalize(pow(h, alpha2, N) * pow(y, beta, N), N)
 
     e = int.from_bytes(Web3.solidityKeccak(
-        ['uint256[4]'] * 3 + ['bytes32'],
+        ['uint256[4]'] * 2 + ['bytes32'],
         [to_uint_1024(A1), to_uint_1024(
-            A2), to_uint_1024(A), parametersHash]
+            A2), parametersHash]
     ), byteorder='big')
 
     w1 = alpha1 + e * r1
-    x1 = beta1 + e * s
     w2 = alpha2 + e * r2
-    x2 = beta2 + e * s
-    w = gamma + e * (r1 - r2)
-
-    quotient = normalize(v1 * pow(v2, -1, N), N)
+    x = beta + e * s
 
     PoKSEq = {
         'A1': A1,
         'A2': A2,
-        'A': A,
-        'x1': x1,
-        'x2': x2,
+        'x': x,
         'w1': w1,
         'w2': w2,
-        'w': w,
-        'quotient': quotient
     }
 
     return PoKSEq
@@ -208,8 +190,9 @@ def generate_ballot_test(numChoices):
             4 * s + 1, N, h, y, parametersHash
         )
 
-        # print(to_uint_1024(decompositionV))
-        # print(to_uint_1024(legendre))
+        print(to_uint_1024(decompositionV))
+        print(to_uint_1024(legendre))
+        print(dict_to_uint_1024(proofOfEquality))
 
         proofsOfPos.append({
             'squareDecomposition': squareDecomposition,
@@ -241,11 +224,6 @@ def render_template(
         PoKSqS = []
         for p in proof['PoKSqS']:
             converted = dict_to_uint_1024(p)
-            if p['w'] < 0:
-                converted['w'] = to_uint_1024(-p['w'])
-                converted['wIsNegative'] = "true"
-            else:
-                converted['wIsNegative'] = "false"
             if p['w2'] < 0:
                 converted['w2'] = to_uint_1024(-p['w2'])
                 converted['w2IsNegative'] = "true"
@@ -253,17 +231,10 @@ def render_template(
                 converted['w2IsNegative'] = "false"
             PoKSqS.append(converted)
 
-        PoKSEq = dict_to_uint_1024(proof['PoKSEq'])
-        if proof['PoKSEq']['w'] < 0:
-            PoKSEq['w'] = to_uint_1024(-proof['PoKSEq']['w'])
-            PoKSEq['wIsNegative'] = "true"
-        else:
-            PoKSEq['wIsNegative'] = "false"
-
         proofs.append({
             'squareDecomposition': [to_uint_1024(v) for v in proof['squareDecomposition']],
             'PoKSqS': PoKSqS,
-            'PoKSEq': PoKSEq,
+            'PoKSEq': dict_to_uint_1024(proof['PoKSEq']),
         })
 
     # pprint(puzzles)
@@ -285,7 +256,7 @@ def render_template(
         pointsPerVoter=pointsPerVoter,
         numChoices=numChoices
     )
-    print(rendered)
+    # print(rendered)
 
 
-generate_ballot_test(6)
+generate_ballot_test(2)
