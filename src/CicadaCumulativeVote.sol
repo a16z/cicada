@@ -94,13 +94,13 @@ abstract contract CicadaCumulativeVote {
     {
         pp.g = pp.g.normalize(pp.N);
         pp.h = pp.h.normalize(pp.N);
-        pp.hInv = pp.hInv.normalize(pp.N);
+        pp.hInv = pp.hInv;
         // h * h^(-1) = 1 (mod N)
         if (!pp.h.mulMod(pp.hInv, pp.N).eq(1.toUint1024())) {
             revert();
         }
         pp.y = pp.y.normalize(pp.N);
-        pp.yInv = pp.yInv.normalize(pp.N);
+        pp.yInv = pp.yInv;
         // y * y^(-1) = 1 (mod N)
         if (!pp.y.mulMod(pp.yInv, pp.N).eq(1.toUint1024())) {
             revert();
@@ -117,8 +117,7 @@ abstract contract CicadaCumulativeVote {
             // and populates the tally storage slots so subsequent SSTOREs
             // incur a gas cost of SSTORE_RESET_GAS (~5k) instead of 
             // SSTORE_SET_GAS (~20k).
-            newVote.tallies[i].u = pp.g;
-            newVote.tallies[i].v = pp.h;
+            newVote.tallies.push(Puzzle(pp.g, pp.h));
         }
 
         if (startTime == 0) {
@@ -129,6 +128,7 @@ abstract contract CicadaCumulativeVote {
         newVote.startTime = startTime;
         uint64 endTime = startTime + votingPeriod;
         newVote.endTime = endTime;
+        newVote.pointsPerVoter = pointsPerVoter;
 
         emit VoteCreated(
             voteId,

@@ -139,14 +139,20 @@ def generate_ballot_test(numChoices):
     T = random.randint(1000, 100000)
     g = normalize(random.randint(0, N), N)
     h = normalize(pow(g, 2 ** T, N), N)
-    hInv = normalize(pow(h, -1, N), N)
+    hInv = pow(h, -1, N)
     y = normalize(random.randint(0, N), N)
-    yInv = normalize(pow(y, -1, N), N)
+    yInv = pow(y, -1, N)
 
     parametersHash = Web3.solidityKeccak(
         ['uint256'] + ['uint256[4]'] * 6,
         [T, to_uint_1024(N), to_uint_1024(g), to_uint_1024(h), to_uint_1024(hInv),
          to_uint_1024(y), to_uint_1024(yInv)]
+    )
+
+    # Hardcoded msg.sender address
+    parametersHash = Web3.solidityKeccak(
+        ['bytes32', 'bytes32'],
+        [parametersHash, '0x00000000000000000000000000000000000000000000000000000c0ffee2c0de']
     )
 
     # Ballot
@@ -189,10 +195,6 @@ def generate_ballot_test(numChoices):
             (None, legendre, 4 * r),
             4 * s + 1, N, h, y, parametersHash
         )
-
-        print(to_uint_1024(decompositionV))
-        print(to_uint_1024(legendre))
-        print(dict_to_uint_1024(proofOfEquality))
 
         proofsOfPos.append({
             'squareDecomposition': squareDecomposition,
@@ -245,7 +247,8 @@ def render_template(
         trim_blocks=True,
         lstrip_blocks=True
     )
-    template = environment.get_template("VerifyCumulativeBallotTest.sol.jinja")
+    # template = environment.get_template("VerifyCumulativeBallotTest.sol.jinja")
+    template = environment.get_template("CastCumulativeBallotTest.sol.jinja")
 
     rendered = template.render(
         N=N, T=T, g=g, h=h, hInv=hInv, y=y, yInv=yInv,
@@ -256,7 +259,7 @@ def render_template(
         pointsPerVoter=pointsPerVoter,
         numChoices=numChoices
     )
-    # print(rendered)
+    print(rendered)
 
 
-generate_ballot_test(2)
+generate_ballot_test(6)

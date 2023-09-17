@@ -128,6 +128,4 @@ def generate_bid_test(numBidBits, bidderId):
     print(rendered)
 
 
-generate_bid_test(8, 2)
-# for i in range(256):
-# generate_bid_test(i+1)
+generate_bid_test(16, 2)
