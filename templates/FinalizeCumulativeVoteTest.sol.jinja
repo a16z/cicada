@@ -1,0 +1,141 @@
+// SPDX-License-Identifier: AGPL-3.0
+pragma solidity ^0.8;
+
+import 'forge-std/Test.sol';
+import '../src/CicadaCumulativeVote.sol';
+import '../src/LibUint1024.sol';
+import '../src/LibSigmaProtocol.sol';
+
+
+contract VoteWrapper is CicadaCumulativeVote {  
+    function createVote(PublicParameters calldata pp)
+        external
+    {
+        _createVote(
+            pp,
+            "test",
+            10,
+            0,
+            0,
+            {{ numChoices }}
+        );
+
+        Vote storage newVote = votes[1];
+        {% for puzzle in tallies %}
+        newVote.tallies[{{ loop.index0 }}].u = [
+            {% for element in puzzle.u %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        newVote.tallies[{{ loop.index0 }}].v = [
+            {% for element in puzzle.v %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        {% endfor %}
+    }
+
+    function finalizeVote(
+        PublicParameters calldata pp,
+        uint256[] calldata talliesPlaintext,
+        uint256[4][] memory w,
+        LibSigmaProtocol.ProofOfExponentiation[] calldata proofs
+    )
+        external
+    {
+        _finalizeVote(1, pp, talliesPlaintext, w, proofs);
+    }
+}
+
+
+contract FinalizeCumulativeVoteGeneratedTest is Test {
+    using LibUint1024 for *;
+
+    VoteWrapper vote;
+
+    function setUp() external {
+        vote = new VoteWrapper();
+        vote.createVote(_publicParameters());
+    }
+
+    function _publicParameters()
+        private
+        pure
+        returns (CicadaCumulativeVote.PublicParameters memory pp)
+    {
+        pp.T = {{ T }};
+        pp.N = [
+            {% for element in N %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.g = [
+            {% for element in g %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.h = [
+            {% for element in h %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.hInv = [
+            {% for element in hInv %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.y = [
+            {% for element in y %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.yInv = [
+            {% for element in yInv %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+    }
+
+    function testFinalizeVote()
+        external
+    {
+        CicadaCumulativeVote.PublicParameters memory pp = _publicParameters();
+
+        uint256[] memory talliesPlaintext = new uint256[]({{ numChoices }});
+        {% for tallyPlaintext in talliesPlaintext %}
+        talliesPlaintext[{{ loop.index0 }}] = {{ tallyPlaintext }};
+        {% endfor %}
+
+        uint256[4][] memory w = new uint256[4][]({{ numChoices }});
+        {% for w_i in w %}
+        w[{{ loop.index0 }}] = [
+            {% for element in w_i %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        {% endfor %}
+
+        LibSigmaProtocol.ProofOfExponentiation[] memory proofs = new LibSigmaProtocol.ProofOfExponentiation[]({{ numChoices }});
+        {% for proof in proofs %}
+        proofs[{{ loop.index0 }}].pi = [
+            {% for element in proof.pi %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        proofs[{{ loop.index0 }}].j = {{ proof.j }};
+        proofs[{{ loop.index0 }}].l = {{ proof.l }};
+        {% endfor %}
+
+        vote.finalizeVote(pp, talliesPlaintext, w, proofs);
+    }
+}
