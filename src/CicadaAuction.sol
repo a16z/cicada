@@ -5,6 +5,9 @@ import './LibUint1024.sol';
 import './LibPrime.sol';
 
 
+/// @dev Cicada auction base contract. Note that `_createAuction`, `_placeBid`,
+///      and `_finalizeAuction` assume asset escrow/transfers are implemented by
+///      the inheriting contract.
 abstract contract CicadaAuction {
     using LibUint1024 for *;
 
@@ -39,61 +42,45 @@ abstract contract CicadaAuction {
         uint256 c_1;
     }
 
-    struct Vote {
+    struct BidderInfo {
+        uint32 id;
+        bool hasBid;
+    }
+
+    struct Auction {
         bytes32 parametersHash;
-        Puzzle tally;
-        uint64 numVotes;
         uint64 startTime;
         uint64 endTime;
         bool isFinalized;
+        Puzzle[] tallies;
+        mapping(address => BidderInfo) bidders;
     }
-
-    event VoteCreated(
-        uint256 voteId,
-        string description,
-        uint64 startTime,
-        uint64 endTime,
-        PublicParameters pp
-    );
-
-    event VoteFinalized(
-        uint256 voteId,
-        uint64 numYesVotes,
-        uint64 numNoVotes
-    );
     
     error InvalidProofOfExponentiation();
     error InvalidPuzzleSolution();
-    error InvalidBallot();
+    error InvalidBid();
     error InvalidStartTime();
-    error VoteIsNotOngoing();
-    error VoteHasNotEnded();
-    error VoteAlreadyFinalized();
+    error AuctionIsNotOngoing();
+    error AuctionHasNotEnded();
+    error AuctionAlreadyFinalized();
     error ParametersHashMismatch();
 
-    uint256 public nextVoteId = 1;
-    mapping(uint256 => Vote) public votes;
+    uint256 public nextAuctionId = 1;
+    mapping(uint256 => Auction) public auctions;
 
-    /// @dev Creates a vote using the given public parameters.
-    ///      CAUTION: This function does not check the validity of 
-    ///      the public parameters! Most notably, it does not check
-    ///          1. that pp.N is a valid RSA modulus, 
-    ///          2. that h = g^(2^T), 
-    ///          3. or that g and y have Jacobi symbol 1. 
-    ///      These should be verified off-chain (or in the inheriting
-    ///      contract, if desired).
-    /// @param pp Public parameters for the homomorphic time-lock puzzles.
-    /// @param description A human-readable description of the vote.
-    /// @param startTime The UNIX timestamp at which voting opens.
-    /// @param votingPeriod The duration of the voting period, in seconds.
-    function _createVote(
+    uint256 private constant MAX_NUM_BIDDERS = 64;
+
+    function _createAuction(
         PublicParameters memory pp,
-        string memory description,
         uint64 startTime,
-        uint64 votingPeriod
+        uint64 bidPeriod,
+        address[] memory bidders,
+        uint256 numBidBits
     )
         internal
     {
+        require(bidders.length <= MAX_NUM_BIDDERS, "Too many bidders");
+
         pp.g = pp.g.normalize(pp.N);
         pp.h = pp.h.normalize(pp.N);
         pp.y = pp.y.normalize(pp.N);
@@ -103,119 +90,139 @@ abstract contract CicadaAuction {
             revert();
         }
 
-        uint256 voteId = nextVoteId++;
-        Vote storage newVote = votes[voteId];
-        newVote.parametersHash = keccak256(abi.encode(pp));
+        uint256 auctionId = nextAuctionId++;
+        Auction storage newAuction = auctions[auctionId];
+        newAuction.parametersHash = keccak256(abi.encode(pp));
 
-        // This instantiates the tally to 0:
-        //     u = g^1 (mod N)
-        //     v = h^1 * y^0 (mod N)
-        // and populates the tally storage slots so subsequent SSTOREs
-        // incur a gas cost of SSTORE_RESET_GAS (~5k) instead of 
-        // SSTORE_SET_GAS (~20k).
-        newVote.tally.u = pp.g;
-        newVote.tally.v = pp.h;
+        for (uint256 i = 0; i != numBidBits; i++) {
+            newAuction.tallies.push(Puzzle(pp.g, pp.h));
+        }
+        for (uint256 i = 0; i != bidders.length; i++) {
+            newAuction.bidders[bidders[i]] = BidderInfo(uint32(i + 1), false);
+        }
+
         if (startTime == 0) {
             startTime = uint64(block.timestamp);
         } else if (startTime < block.timestamp) {
             revert InvalidStartTime();
         }
-        newVote.startTime = startTime;
-        uint64 endTime = startTime + votingPeriod;
-        newVote.endTime = endTime;
-
-        emit VoteCreated(
-            voteId,
-            description,
-            startTime,
-            endTime,
-            pp
-        );
+        newAuction.startTime = startTime;
+        uint64 endTime = startTime + bidPeriod;
+        newAuction.endTime = endTime;
     }
 
-    /// @dev Casts a ballot for an active vote.
-    /// @param voteId The vote to cast a ballot for.
-    /// @param pp The public parameters used for the vote.
-    /// @param ballot The time-lock puzzle encoding the ballot.
-    /// @param PoV The proof of ballot validity.
-    function _castBallot(
-        uint256 voteId,
+    function _placeBid(
+        uint256 auctionId,
         PublicParameters memory pp,
-        Puzzle memory ballot,
-        ProofOfValidity memory PoV
+        Puzzle[] memory bid,
+        ProofOfValidity[] memory validityProofs
     )
         internal
     {
-        Vote storage vote = votes[voteId];
+        Auction storage auction = auctions[auctionId];
         if (
-            block.timestamp < vote.startTime || 
-            block.timestamp > vote.endTime
+            block.timestamp < auction.startTime || 
+            block.timestamp > auction.endTime
         ) {
-            revert VoteIsNotOngoing();
+            revert AuctionIsNotOngoing();
         }
+
+        require(!auction.bidders[msg.sender].hasBid, "Bidder has already bid");
+        uint256 bidderId = uint256(auction.bidders[msg.sender].id);
+        require(bidderId != 0, "Unregistered bidder");
+
         bytes32 parametersHash = keccak256(abi.encode(pp));
-        if (parametersHash != vote.parametersHash) {
+        if (parametersHash != auction.parametersHash) {
             revert ParametersHashMismatch();
         }
         parametersHash = keccak256(abi.encode(parametersHash, msg.sender));
-        _verifyBallotValidity(pp, parametersHash, ballot, PoV);
-        vote.numVotes++;
-        _updateTally(pp, vote.tally, ballot);
+        
+        uint256[4] memory yInvS = pp.yInv.expMod(1 << (bidderId - 1), pp.N);
+
+        require(bid.length == validityProofs.length, "Array length mismatch");
+        for (uint256 i = 0; i != bid.length; i++) {
+            _verifyBallotValidity(
+                pp, 
+                parametersHash, 
+                bid[i], 
+                validityProofs[i], 
+                yInvS
+            );
+            _updateTally(pp, auction.tallies[i], bid[i]);
+        }
+
+        auction.bidders[msg.sender].hasBid = true;
     }
 
-    /// @dev Finalizes a vote by supplying supplying the decoded tally
-    ///      `tallyPlaintext` and associated proof of correctness.
-    /// @param voteId The vote to cast a ballot for.
-    /// @param pp The public parameters used for the vote.
-    /// @param tallyPlaintext The purported plaintext vote tally.
-    /// @param w The purported value `w := Z.u^(2^T)`, where Z
-    ///          is the puzzle encoding the tally.
-    /// @param PoE The Wesolowski proof of exponentiation (i.e. the 
-    ///        proof that `w = Z.u^(2^T)`)
-    function _finalizeVote(
-        uint256 voteId,
+    function _finalizeAuction(
+        uint256 auctionId,
         PublicParameters memory pp,
-        uint64 tallyPlaintext,
-        uint256[4] memory w,
-        ProofOfExponentiation memory PoE
+        address winner,
+        uint256[] memory plaintextTallies,
+        uint256[4][] memory w,
+        ProofOfExponentiation[] memory PoE
     )
         internal
     {
-        Vote storage vote = votes[voteId];        
-        if (block.timestamp < vote.endTime) {
-            revert VoteHasNotEnded();
+        Auction storage auction = auctions[auctionId];
+        if (block.timestamp < auction.endTime) {
+            revert AuctionHasNotEnded();
         }
         bytes32 parametersHash = keccak256(abi.encode(pp));
-        if (parametersHash != vote.parametersHash) {
+        if (parametersHash != auction.parametersHash) {
             revert ParametersHashMismatch();
         }
         
-        if (vote.isFinalized) {
-            revert VoteAlreadyFinalized();
+        if (auction.isFinalized) {
+            revert AuctionAlreadyFinalized();
         }
 
-        _verifySolutionCorrectness(
-            pp,
-            vote.tally,
-            tallyPlaintext,
-            w,
-            PoE
+        require(plaintextTallies.length <= auction.tallies.length);
+        require(
+            plaintextTallies.length == w.length &&
+            w.length == PoE.length
         );
 
-        vote.isFinalized = true;
+        uint256 remainingBiddersBitvector = (1 << MAX_NUM_BIDDERS) - 1;
+        for (uint256 i = 0; i != plaintextTallies.length; i++) {
+            _verifySolutionCorrectness(
+                pp,
+                parametersHash,
+                auction.tallies[i],
+                plaintextTallies[i],
+                w[i],
+                PoE[i]
+            );
 
-        emit VoteFinalized(
-            voteId,
-            tallyPlaintext,
-            vote.numVotes - tallyPlaintext
-        );
+            if (remainingBiddersBitvector & plaintextTallies[i] == 0) {
+                continue;
+            }
+            remainingBiddersBitvector &= plaintextTallies[i];
+        }
+
+        if (remainingBiddersBitvector & (remainingBiddersBitvector - 1) == 0) {
+            // Exactly one bit set => winner
+            
+            // Check that the provided `winner` address is correct
+            // (reverts if `winner` is not a registered bidder, i.e. id is 0)
+            require((1 << (auction.bidders[winner].id - 1)) == remainingBiddersBitvector);
+            
+        } else {
+            // All puzzles must be checked if there is a tie
+            require(plaintextTallies.length == auction.tallies.length);
+            // Can pick any one of the remaining bidders as the winner
+            // (can be replaced with preferred tie-breaking logic)
+            require((1 << (auction.bidders[winner].id - 1) & remainingBiddersBitvector) != 0);
+        }
+
+        auction.isFinalized = true;
     }
 
     /// @dev OR composition of two DLOG equality sigma protocols:
-    ///          DLOG_g(u) = DLOG_h(v) OR DLOG_g(u) = DLOG(v / y)
+    ///          DLOG_g(u) = DLOG_h(v) OR DLOG_g(u) = DLOG(v / y^(2^i))
     ///      This is equivalent to proving that there exists some
     ///      value r such that:
-    ///          (u = g^r AND v = h^r) OR (u = v^r AND v = h^r * y)
+    ///          (u = g^r AND v = h^r) OR (u = v^r AND v = h^r * y^(2^i))
     ///      where the former case represents a "no" ballot and the
     ///      latter case represents a "yes" ballot.
     /// @param pp The public parameters used for the vote.
@@ -226,7 +233,8 @@ abstract contract CicadaAuction {
         PublicParameters memory pp,
         bytes32 parametersHash,
         Puzzle memory Z,
-        ProofOfValidity memory PoV
+        ProofOfValidity memory PoV,
+        uint256[4] memory yInvS
     )
         internal
         view
@@ -248,7 +256,7 @@ abstract contract CicadaAuction {
         // c_0 + c_1 = c (mod 2^256)
         unchecked {
             if (PoV.c_0 + PoV.c_1 != c) {
-                revert InvalidBallot();
+                revert InvalidBid();
             }
         }
 
@@ -261,7 +269,7 @@ abstract contract CicadaAuction {
             .mulMod(PoV.a_0, pp.N)
             .normalize(pp.N);
         if (!lhs.eq(rhs)) {
-            revert InvalidBallot();
+            revert InvalidBid();
         }
 
         // h^t_0 = b_0 * v^c_0 (mod N)
@@ -273,7 +281,7 @@ abstract contract CicadaAuction {
             .mulMod(PoV.b_0, pp.N)
             .normalize(pp.N);
         if (!lhs.eq(rhs)) {
-            revert InvalidBallot();
+            revert InvalidBid();
         }
 
         // g^t_1 = a_1 * u^c_1 (mod N)
@@ -285,20 +293,20 @@ abstract contract CicadaAuction {
             .mulMod(PoV.a_1, pp.N)
             .normalize(pp.N);
         if (!lhs.eq(rhs)) {
-            revert InvalidBallot();
+            revert InvalidBid();
         }
 
-        // h^t_1 = b_1 * (v * y^(-1))^c_1 (mod N)
+        // h^t_1 = b_1 * (v * y^(-2^i))^c_1 (mod N)
         lhs = pp.h
             .expMod(PoV.t_1, pp.N)
             .normalize(pp.N);
         rhs = Z.v
-            .mulMod(pp.yInv, pp.N)
+            .mulMod(yInvS, pp.N)
             .expMod(PoV.c_1, pp.N)
             .mulMod(PoV.b_1, pp.N)
             .normalize(pp.N);
         if (!lhs.eq(rhs)) {
-            revert InvalidBallot();
+            revert InvalidBid();
         }
     }
 
@@ -312,6 +320,7 @@ abstract contract CicadaAuction {
     ///        proof that `w = Z.u^(2^T)`)
     function _verifySolutionCorrectness(
         PublicParameters memory pp,
+        bytes32 parametersHash,
         Puzzle memory Z,
         uint256 s,
         uint256[4] memory w,
@@ -320,7 +329,6 @@ abstract contract CicadaAuction {
         internal
         view
     {
-        bytes32 parametersHash = keccak256(abi.encode(pp));
         _verifyExponentiation(pp, parametersHash, Z.u, w, PoE);
 
         // Check v = w * y^s (mod N)
@@ -331,6 +339,18 @@ abstract contract CicadaAuction {
         if (!Z.v.eq(rhs)) {
             revert InvalidPuzzleSolution();
         }
+    }
+
+    // Homomorphically adds the bid value to the tally.
+    function _updateTally(
+        PublicParameters memory pp,
+        Puzzle storage tally,
+        Puzzle memory bidPuzzle
+    )
+        private
+    {
+        tally.u = tally.u.mulMod(bidPuzzle.u, pp.N).normalize(pp.N);
+        tally.v = tally.v.mulMod(bidPuzzle.v, pp.N).normalize(pp.N);
     }
 
     // Verifies the Wesolowski proof of exponentiation that:
@@ -357,21 +377,7 @@ abstract contract CicadaAuction {
             .expMod(l, pp.N)
             .mulMod(u.expMod(r, pp.N), pp.N)
             .normalize(pp.N);
-        if (!w.eq(rhs)) {
-            revert InvalidProofOfExponentiation();
-        }
-    }
-
-    // Homomorphically adds the ballot value to the tally.
-    function _updateTally(
-        PublicParameters memory pp,
-        Puzzle storage tally,
-        Puzzle memory ballot
-    )
-        private
-    {
-        tally.u = tally.u.mulMod(ballot.u, pp.N).normalize(pp.N);
-        tally.v = tally.v.mulMod(ballot.v, pp.N).normalize(pp.N);
+        require(w.eq(rhs));
     }
 
     // Computes (base ** exponent) % modulus
