@@ -84,7 +84,7 @@ abstract contract CicadaAuction {
         pp.g = pp.g.normalize(pp.N);
         pp.h = pp.h.normalize(pp.N);
         pp.y = pp.y.normalize(pp.N);
-        pp.yInv = pp.yInv.normalize(pp.N);
+        pp.yInv = pp.yInv;
         // y * y^(-1) = 1 (mod N)
         if (!pp.y.mulMod(pp.yInv, pp.N).eq(1.toUint1024())) {
             revert("Invalid yInv");

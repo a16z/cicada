@@ -1,0 +1,156 @@
+// SPDX-License-Identifier: AGPL-3.0
+pragma solidity ^0.8;
+
+import 'forge-std/Test.sol';
+import '../src/CicadaAuction.sol';
+import '../src/LibUint1024.sol';
+import '../src/LibSigmaProtocol.sol';
+
+
+contract AuctionWrapper is CicadaAuction {
+    function createAuction(
+        PublicParameters calldata pp,
+        address[] memory bidders,
+        uint256 numBidBits
+    )
+        external
+    {
+        _createAuction(
+            pp,
+            0,
+            0,
+            bidders,
+            numBidBits
+        );
+
+        Auction storage auction = auctions[1];
+        {% for puzzle in tallies %}
+        auction.tallies[{{ loop.index0 }}].u = [
+            {% for element in puzzle.u %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        auction.tallies[{{ loop.index0 }}].v = [
+            {% for element in puzzle.v %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        {% endfor %}
+    }
+
+    function finalizeAuction(
+        uint256 auctionId,
+        PublicParameters calldata pp,
+        address winner,
+        uint256[] memory plaintextTallies,
+        uint256[4][] memory w,
+        ProofOfExponentiation[] memory proofs
+    )
+        external
+    {
+        _finalizeAuction(
+            auctionId,
+            pp,
+            winner,
+            plaintextTallies,
+            w,
+            proofs
+        );
+    }
+}
+
+
+contract FinalizeAuctionGeneratedTest is Test {
+    using LibUint1024 for *;
+
+    AuctionWrapper auction;
+
+    function setUp() external {
+        auction = new AuctionWrapper();
+        address[] memory bidders = new address[](3);
+        bidders[1] = address(this);
+        auction.createAuction(
+            _publicParameters(),
+            bidders,
+            {{ numBidBits }}
+        );
+    }
+
+    function _publicParameters() private pure returns (CicadaAuction.PublicParameters memory pp) {
+        pp.T = {{ T }};
+        pp.N = [
+            {% for element in N %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.g = [
+            {% for element in g %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.h = [
+            {% for element in h %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.y = [
+            {% for element in y %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.yInv = [
+            {% for element in yInv %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+    }
+
+    function testFinalizeAuction()
+        external
+    {
+        CicadaAuction.PublicParameters memory pp = _publicParameters();
+
+        uint256[] memory talliesPlaintext = new uint256[]({{ numBidBits }});
+        {% for tallyPlaintext in talliesPlaintext %}
+        talliesPlaintext[{{ loop.index0 }}] = {{ tallyPlaintext }};
+        {% endfor %}
+
+        uint256[4][] memory w = new uint256[4][]({{ numBidBits }});
+        {% for w_i in w %}
+        w[{{ loop.index0 }}] = [
+            {% for element in w_i %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        {% endfor %}
+
+        CicadaAuction.ProofOfExponentiation[] memory proofs = new CicadaAuction.ProofOfExponentiation[]({{ numBidBits }});
+        {% for proof in proofs %}
+        proofs[{{ loop.index0 }}].pi = [
+            {% for element in proof.pi %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        proofs[{{ loop.index0 }}].j = {{ proof.j }};
+        proofs[{{ loop.index0 }}].l = {{ proof.l }};
+        {% endfor %}
+
+        auction.finalizeAuction(
+            1, 
+            pp, 
+            address(this),
+            talliesPlaintext,
+            w,
+            proofs
+        );
+    }
+}
