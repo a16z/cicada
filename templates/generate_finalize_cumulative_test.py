@@ -54,7 +54,7 @@ def generate_puzzle_and_proof(T, N, g, y, parametersHash, s):
     return {'u': u, 'v': v}, {'pi': pi, 'l': l, 'j': j}, w
 
 
-def generate_proof_of_exponentiation_test(numChoices):
+def generate_finalize_vote_test(numChoices):
     # Public parameters
     N = RSA.generate(1024).n
     T = random.randint(1000, 100000)
@@ -106,4 +106,4 @@ def generate_proof_of_exponentiation_test(numChoices):
     print(rendered)
 
 
-generate_proof_of_exponentiation_test(6)
+generate_finalize_vote_test(6)
