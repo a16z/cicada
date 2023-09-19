@@ -2,12 +2,12 @@
 pragma solidity ^0.8;
 
 import 'forge-std/Test.sol';
-import '../src/CicadaAuction.sol';
+import '../src/CicadaLogHTLPAuction.sol';
 import '../src/LibUint1024.sol';
 import '../src/LibSigmaProtocol.sol';
 
 
-contract AuctionWrapper is CicadaAuction {
+contract AuctionWrapper is CicadaLogHTLPAuction {
     function createAuction(
         PublicParameters calldata pp,
         address[] memory bidders,
@@ -37,7 +37,7 @@ contract AuctionWrapper is CicadaAuction {
 }
 
 
-contract PlaceBidGeneratedTest is Test {
+contract PlaceLogHTLPBidGeneratedTest is Test {
     using LibUint1024 for *;
 
     AuctionWrapper auction;
@@ -53,7 +53,7 @@ contract PlaceBidGeneratedTest is Test {
         );
     }
 
-    function _publicParameters() private pure returns (CicadaAuction.PublicParameters memory pp) {
+    function _publicParameters() private pure returns (CicadaLogHTLPAuction.PublicParameters memory pp) {
         pp.T = 90684;
         pp.N = [
             77172362864111114617917748173391518563926130646781395897952735037423669352854,
@@ -90,9 +90,9 @@ contract PlaceBidGeneratedTest is Test {
     function testVerifyBid()
         external
     {
-        CicadaAuction.PublicParameters memory pp = _publicParameters();
+        CicadaLogHTLPAuction.PublicParameters memory pp = _publicParameters();
 
-        CicadaAuction.Puzzle[] memory bid = new CicadaAuction.Puzzle[](16);
+        CicadaLogHTLPAuction.Puzzle[] memory bid = new CicadaLogHTLPAuction.Puzzle[](16);
         bid[0].u = [
             uint256(11910377678558977425643876474383974250160628869603311332329497221687335682755),
             uint256(29684572939374619655475587356313684172200989393589759444724269108735567902647),
@@ -286,7 +286,7 @@ contract PlaceBidGeneratedTest is Test {
             uint256(83194884629115162080976079152237506118403570243537838777255490935276847655978)
         ];
 
-        CicadaAuction.ProofOfValidity[] memory proofs = new CicadaAuction.ProofOfValidity[](16);
+        CicadaLogHTLPAuction.ProofOfValidity[] memory proofs = new CicadaLogHTLPAuction.ProofOfValidity[](16);
         proofs[0].a_0 = [
             22303265882331957970783406330844350789343723263944107185995867264428550931278,
             85769457981897557116155968131667426751991333851261582630767836468474034888362,

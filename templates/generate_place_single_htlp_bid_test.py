@@ -296,7 +296,7 @@ def render_template(
         trim_blocks=True,
         lstrip_blocks=True
     )
-    template = environment.get_template("PlaceBid2Test.sol.jinja")
+    template = environment.get_template("PlaceSingleHTLPBidTest.sol.jinja")
 
     rendered = template.render(
         N=N, T=T, g=g, h=h, hInv=hInv, y=y, yInv=yInv, vInv=vInv, yM=yM,

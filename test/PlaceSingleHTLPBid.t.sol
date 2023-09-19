@@ -2,12 +2,12 @@
 pragma solidity ^0.8;
 
 import 'forge-std/Test.sol';
-import '../src/CicadaAuction2.sol';
+import '../src/CicadaSingleHTLPAuction.sol';
 import '../src/LibUint1024.sol';
 import '../src/LibSigmaProtocol.sol';
 
 
-contract AuctionWrapper is CicadaAuction2 {
+contract AuctionWrapper is CicadaSingleHTLPAuction {
     function createAuction(
         PublicParameters calldata pp,
         address[] memory bidders,
@@ -37,7 +37,7 @@ contract AuctionWrapper is CicadaAuction2 {
 }
 
 
-contract PlaceBid2GeneratedTest is Test {
+contract PlaceSingleHTLPBidGeneratedTest is Test {
     using LibUint1024 for *;
 
     AuctionWrapper auction;
@@ -53,7 +53,7 @@ contract PlaceBid2GeneratedTest is Test {
         );
     }
 
-    function _publicParameters() private pure returns (CicadaAuction2.PublicParameters memory pp) {
+    function _publicParameters() private pure returns (CicadaSingleHTLPAuction.PublicParameters memory pp) {
         pp.T = 4452;
         pp.N = [
             77172362864111114617917748173391518563926130646781395897952735037423669352854,
@@ -102,9 +102,9 @@ contract PlaceBid2GeneratedTest is Test {
     function testVerifyBid()
         external
     {
-        CicadaAuction2.PublicParameters memory pp = _publicParameters();
+        CicadaSingleHTLPAuction.PublicParameters memory pp = _publicParameters();
 
-        CicadaAuction2.Puzzle memory bid;
+        CicadaSingleHTLPAuction.Puzzle memory bid;
         bid.u = [
             uint256(3645079519808016101769028864987868630190370736396368530725398410356918760351),
             uint256(30734240580332104532985672720391798742376246884905696914170112085731002146005),
@@ -118,7 +118,7 @@ contract PlaceBid2GeneratedTest is Test {
             uint256(99987162437223303796345729911464202528699584647781628762078985141397200152332)
         ];
 
-        CicadaAuction2.ProofOfBidValidity memory proof;
+        CicadaSingleHTLPAuction.ProofOfBidValidity memory proof;
         proof.vInv = [
             uint256(45723799938320742768426410113547901485842046178839498157849198251574427024345),            
             uint256(40072376340333579254585519734166533718860370246097963374463592702124707655379),            

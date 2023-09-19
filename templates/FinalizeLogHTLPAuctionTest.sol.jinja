@@ -2,12 +2,12 @@
 pragma solidity ^0.8;
 
 import 'forge-std/Test.sol';
-import '../src/CicadaAuction.sol';
+import '../src/CicadaLogHTLPAuction.sol';
 import '../src/LibUint1024.sol';
 import '../src/LibSigmaProtocol.sol';
 
 
-contract AuctionWrapper is CicadaAuction {
+contract AuctionWrapper is CicadaLogHTLPAuction {
     function createAuction(
         PublicParameters calldata pp,
         address[] memory bidders,
@@ -62,7 +62,7 @@ contract AuctionWrapper is CicadaAuction {
 }
 
 
-contract FinalizeAuctionGeneratedTest is Test {
+contract FinalizeLogHTLPAuctionGeneratedTest is Test {
     using LibUint1024 for *;
 
     AuctionWrapper auction;
@@ -78,7 +78,7 @@ contract FinalizeAuctionGeneratedTest is Test {
         );
     }
 
-    function _publicParameters() private pure returns (CicadaAuction.PublicParameters memory pp) {
+    function _publicParameters() private pure returns (CicadaLogHTLPAuction.PublicParameters memory pp) {
         pp.T = {{ T }};
         pp.N = [
             {% for element in N %}
@@ -112,10 +112,10 @@ contract FinalizeAuctionGeneratedTest is Test {
         ];
     }
 
-    function testFinalizeAuction()
+    function testFinalizeLogHTLPAuction()
         external
     {
-        CicadaAuction.PublicParameters memory pp = _publicParameters();
+        CicadaLogHTLPAuction.PublicParameters memory pp = _publicParameters();
 
         uint256[] memory talliesPlaintext = new uint256[]({{ numBidBits }});
         {% for tallyPlaintext in talliesPlaintext %}
@@ -132,7 +132,7 @@ contract FinalizeAuctionGeneratedTest is Test {
         ];
         {% endfor %}
 
-        CicadaAuction.LibSigmaProtocol.ProofOfExponentiation[] memory proofs = new CicadaAuction.LibSigmaProtocol.ProofOfExponentiation[]({{ numBidBits }});
+        CicadaLogHTLPAuction.LibSigmaProtocol.ProofOfExponentiation[] memory proofs = new CicadaLogHTLPAuction.LibSigmaProtocol.ProofOfExponentiation[]({{ numBidBits }});
         {% for proof in proofs %}
         proofs[{{ loop.index0 }}].pi = [
             {% for element in proof.pi %}

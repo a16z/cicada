@@ -113,7 +113,7 @@ def generate_bid_test(numBidBits, bidderId):
         trim_blocks=True,
         lstrip_blocks=True
     )
-    template = environment.get_template("PlaceBidTest.sol.jinja")
+    template = environment.get_template("PlaceLogHTLPBidTest.sol.jinja")
 
     [N, g, h, y, yInv] = map(
         lambda x: to_uint_1024(x),

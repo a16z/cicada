@@ -2,12 +2,12 @@
 pragma solidity ^0.8;
 
 import 'forge-std/Test.sol';
-import '../src/CicadaAuction2.sol';
+import '../src/CicadaSingleHTLPAuction.sol';
 import '../src/LibUint1024.sol';
 import '../src/LibSigmaProtocol.sol';
 
 
-contract AuctionWrapper is CicadaAuction2 {
+contract AuctionWrapper is CicadaSingleHTLPAuction {
     function createAuction(
         PublicParameters calldata pp,
         address[] memory bidders,
@@ -60,7 +60,7 @@ contract AuctionWrapper is CicadaAuction2 {
 }
 
 
-contract FinalizeAuction2GeneratedTest is Test {
+contract FinalizeSingleHTLPAuctionGeneratedTest is Test {
     using LibUint1024 for *;
 
     AuctionWrapper auction;
@@ -76,7 +76,7 @@ contract FinalizeAuction2GeneratedTest is Test {
         );
     }
 
-    function _publicParameters() private pure returns (CicadaAuction2.PublicParameters memory pp) {
+    function _publicParameters() private pure returns (CicadaSingleHTLPAuction.PublicParameters memory pp) {
         pp.T = {{ T }};
         pp.N = [
             {% for element in N %}
@@ -122,10 +122,10 @@ contract FinalizeAuction2GeneratedTest is Test {
         ];
     }
 
-    function testFinalizeAuction()
+    function testFinalizeSingleHTLPAuction()
         external
     {
-        CicadaAuction2.PublicParameters memory pp = _publicParameters();
+        CicadaSingleHTLPAuction.PublicParameters memory pp = _publicParameters();
 
         uint256 plaintextBids = {{ plaintextBids }};
 
