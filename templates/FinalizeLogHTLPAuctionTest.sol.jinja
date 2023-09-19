@@ -132,7 +132,7 @@ contract FinalizeLogHTLPAuctionGeneratedTest is Test {
         ];
         {% endfor %}
 
-        CicadaLogHTLPAuction.LibSigmaProtocol.ProofOfExponentiation[] memory proofs = new CicadaLogHTLPAuction.LibSigmaProtocol.ProofOfExponentiation[]({{ numBidBits }});
+        LibSigmaProtocol.ProofOfExponentiation[] memory proofs = new LibSigmaProtocol.ProofOfExponentiation[]({{ numBidBits }});
         {% for proof in proofs %}
         proofs[{{ loop.index0 }}].pi = [
             {% for element in proof.pi %}

@@ -247,7 +247,7 @@ def render_template(
         trim_blocks=True,
         lstrip_blocks=True
     )
-    # template = environment.get_template("VerifyCumulativeBallotTest.sol.jinja")
+
     template = environment.get_template("CastCumulativeBallotTest.sol.jinja")
 
     rendered = template.render(
