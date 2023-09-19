@@ -37,7 +37,7 @@ contract AuctionWrapper is CicadaAuction {
 }
 
 
-contract VerifyBidGeneratedTest is Test {
+contract PlaceBidGeneratedTest is Test {
     using LibUint1024 for *;
 
     AuctionWrapper auction;

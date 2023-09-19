@@ -69,7 +69,7 @@ library LibSigmaProtocol {
             .expMod(l, N)
             .mulMod(u.expMod(r, N), N)
             .normalize(N);
-        require(w.eq(rhs));
+        require(w.eq(rhs), "proof of exponentiation");
     }
 
     function verifyProofOfPuzzleValidity(
@@ -98,7 +98,7 @@ library LibSigmaProtocol {
             .expMod(e, N)
             .mulMod(PoPV.a, N)
             .normalize(N);
-        require(lhs.eq(rhs));
+        require(lhs.eq(rhs), "proof of puzzle validity");
 
         lhs = h
             .expMod(PoPV.alpha, N)
@@ -108,7 +108,7 @@ library LibSigmaProtocol {
             .expMod(e, N)
             .mulMod(PoPV.b, N)
             .normalize(N);
-        require(lhs.eq(rhs));
+        require(lhs.eq(rhs), "proof of puzzle validity");
     }
 
     function verifyProofOfPositivity(
@@ -184,7 +184,7 @@ library LibSigmaProtocol {
         uint256[4] memory rhs = h.expMod(PoKSqS.w1, N)
             .mulMod(y.expMod(PoKSqS.x, N), N)
             .normalize(N);
-        require(lhs.eq(rhs));
+        require(lhs.eq(rhs), "proof of square");
 
         lhs = v2.expMod(e, N)
             .mulMod(PoKSqS.A2, N)
@@ -198,7 +198,7 @@ library LibSigmaProtocol {
                 .mulMod(v1.expMod(PoKSqS.x, N), N)
                 .normalize(N);
         }
-        require(lhs.eq(rhs));
+        require(lhs.eq(rhs), "proof of square");
     }
 
     function verifyProofOfEquality(
@@ -221,7 +221,7 @@ library LibSigmaProtocol {
         uint256[4] memory rhs = h.expMod(PoKSEq.w1, N)
             .mulMod(y.expMod(PoKSEq.x, N), N)
             .normalize(N);
-        require(lhs.eq(rhs));
+        require(lhs.eq(rhs), "proof of equality");
 
         lhs = v2.expMod(e, N)
             .mulMod(PoKSEq.A2, N)
@@ -229,7 +229,7 @@ library LibSigmaProtocol {
         rhs = h.expMod(PoKSEq.w2, N)
             .mulMod(y.expMod(PoKSEq.x, N), N)
             .normalize(N);
-        require(lhs.eq(rhs));
+        require(lhs.eq(rhs), "proof of equality");
     }
 
     // Computes (base ** exponent) % modulus

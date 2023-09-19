@@ -1,0 +1,317 @@
+// SPDX-License-Identifier: AGPL-3.0
+pragma solidity ^0.8;
+
+import 'forge-std/Test.sol';
+import '../src/CicadaAuction2.sol';
+import '../src/LibUint1024.sol';
+import '../src/LibSigmaProtocol.sol';
+
+
+contract AuctionWrapper is CicadaAuction2 {
+    function createAuction(
+        PublicParameters calldata pp,
+        address[] memory bidders,
+        uint64 maxBid
+    )
+        external
+    {
+        _createAuction(
+            pp,
+            0,
+            30 minutes,
+            bidders,
+            maxBid
+        );
+    }
+
+    function placeBid(
+        uint256 auctionId,
+        PublicParameters calldata pp,
+        Puzzle calldata bid,
+        ProofOfBidValidity calldata proof
+    )
+        external
+    {
+        _placeBid(auctionId, pp, bid, proof);
+    }
+}
+
+
+contract PlaceBid2GeneratedTest is Test {
+    using LibUint1024 for *;
+
+    AuctionWrapper auction;
+
+    function setUp() external {
+        auction = new AuctionWrapper();
+        address[] memory bidders = new address[](3);
+        bidders[1] = address(0xc0ffee2c0de);
+        auction.createAuction(
+            _publicParameters(),
+            bidders,
+            {{ maxBid }}
+        );
+    }
+
+    function _publicParameters() private pure returns (CicadaAuction2.PublicParameters memory pp) {
+        pp.T = {{ T }};
+        pp.N = [
+            {% for element in N %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.g = [
+            {% for element in g %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.h = [
+            {% for element in h %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        pp.hInv = [
+            {% for element in hInv %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.y = [
+            {% for element in y %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.yInv = [
+            {% for element in yInv %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.yM = [
+            {% for element in yM %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+    }
+
+    function testVerifyBid()
+        external
+    {
+        CicadaAuction2.PublicParameters memory pp = _publicParameters();
+
+        CicadaAuction2.Puzzle memory bid;
+        bid.u = [
+            {% for element in bid.u %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        bid.v = [
+            {% for element in bid.v %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+
+        CicadaAuction2.ProofOfBidValidity memory proof;
+        proof.vInv = [
+            {% for element in vInv %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+
+        proof.PoPV.a = [
+            {% for element in PoPV.a %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        proof.PoPV.b = [
+            {% for element in PoPV.b %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        proof.PoPV.alpha = [
+            {% for element in PoPV.alpha %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        proof.PoPV.beta = [
+            {% for element in PoPV.beta %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        
+        {% for v in proofOfPositivity.squareDecomposition %}
+        proof.proofOfPositivity.squareDecomposition[{{ loop.index0 }}] = [
+            {% for element in v %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        {% endfor %}
+
+        {% for proofOfSquare in proofOfPositivity.PoKSqS %}
+        proof.proofOfPositivity.PoKSqS[{{ loop.index0 }}].squareRoot = [
+            {% for element in proofOfSquare.squareRoot %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        proof.proofOfPositivity.PoKSqS[{{ loop.index0 }}].A1 = [
+            {% for element in proofOfSquare.A1 %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        proof.proofOfPositivity.PoKSqS[{{ loop.index0 }}].A2 = [
+            {% for element in proofOfSquare.A2 %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        proof.proofOfPositivity.PoKSqS[{{ loop.index0 }}].x = [
+            {% for element in proofOfSquare.x %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        proof.proofOfPositivity.PoKSqS[{{ loop.index0 }}].w1 = [
+            {% for element in proofOfSquare.w1 %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        proof.proofOfPositivity.PoKSqS[{{ loop.index0 }}].w2 = [
+            {% for element in proofOfSquare.w2 %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        proof.proofOfPositivity.PoKSqS[{{ loop.index0 }}].w2IsNegative = {{ proofOfSquare.w2IsNegative }};
+        {% endfor %}
+
+        proof.proofOfPositivity.PoKSEq.A1 = [
+            {% for element in proofOfPositivity.PoKSEq.A1 %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        proof.proofOfPositivity.PoKSEq.A2 = [
+            {% for element in proofOfPositivity.PoKSEq.A2 %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        proof.proofOfPositivity.PoKSEq.x = [
+            {% for element in proofOfPositivity.PoKSEq.x %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        proof.proofOfPositivity.PoKSEq.w1 = [
+            {% for element in proofOfPositivity.PoKSEq.w1 %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        proof.proofOfPositivity.PoKSEq.w2 = [
+            {% for element in proofOfPositivity.PoKSEq.w2 %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+
+        {% for v in proofOfUpperBound.squareDecomposition %}
+        proof.proofOfUpperBound.squareDecomposition[{{ loop.index0 }}] = [
+            {% for element in v %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        {% endfor %}
+
+        {% for proofOfSquare in proofOfUpperBound.PoKSqS %}
+        proof.proofOfUpperBound.PoKSqS[{{ loop.index0 }}].squareRoot = [
+            {% for element in proofOfSquare.squareRoot %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        proof.proofOfUpperBound.PoKSqS[{{ loop.index0 }}].A1 = [
+            {% for element in proofOfSquare.A1 %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        proof.proofOfUpperBound.PoKSqS[{{ loop.index0 }}].A2 = [
+            {% for element in proofOfSquare.A2 %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        proof.proofOfUpperBound.PoKSqS[{{ loop.index0 }}].x = [
+            {% for element in proofOfSquare.x %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        proof.proofOfUpperBound.PoKSqS[{{ loop.index0 }}].w1 = [
+            {% for element in proofOfSquare.w1 %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        proof.proofOfUpperBound.PoKSqS[{{ loop.index0 }}].w2 = [
+            {% for element in proofOfSquare.w2 %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        proof.proofOfUpperBound.PoKSqS[{{ loop.index0 }}].w2IsNegative = {{ proofOfSquare.w2IsNegative }};
+        {% endfor %}
+
+        proof.proofOfUpperBound.PoKSEq.A1 = [
+            {% for element in proofOfUpperBound.PoKSEq.A1 %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        proof.proofOfUpperBound.PoKSEq.A2 = [
+            {% for element in proofOfUpperBound.PoKSEq.A2 %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        proof.proofOfUpperBound.PoKSEq.x = [
+            {% for element in proofOfUpperBound.PoKSEq.x %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        proof.proofOfUpperBound.PoKSEq.w1 = [
+            {% for element in proofOfUpperBound.PoKSEq.w1 %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        proof.proofOfUpperBound.PoKSEq.w2 = [
+            {% for element in proofOfUpperBound.PoKSEq.w2 %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+
+        vm.prank(address(0xc0ffee2c0de));
+        auction.placeBid(1, pp, bid, proof);
+    }
+}

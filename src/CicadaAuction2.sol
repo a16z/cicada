@@ -233,10 +233,10 @@ abstract contract CicadaAuction2 {
         // y^M * v^(-1) = h^(-r) * y^(M - bid)
         // (M - bid) >= 0  <=>  bid <= M
         LibSigmaProtocol.verifyProofOfPositivity(
-            pp.N, pp.h, pp.hInv, pp.y, 
+            pp.N, pp.hInv, pp.h, pp.y, 
             parametersHash, 
             pp.yM.mulMod(PoV.vInv, pp.N).normalize(pp.N),
-            PoV.proofOfPositivity
+            PoV.proofOfUpperBound
         );
     }
 
