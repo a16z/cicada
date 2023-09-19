@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8;
 
-import './CicadaCumulativeVote.sol';
 import './LibUint1024.sol';
 import './LibPrime.sol';
 
@@ -49,7 +48,8 @@ library LibSigmaProtocol {
     //     u^(2^T) = w (mod N)
     // See Section 2.1 of http://crypto.stanford.edu/~dabo/papers/VDFsurvey.pdf
     function verifyExponentiation(
-        CicadaCumulativeVote.PublicParameters memory pp,
+        uint256 T,
+        uint256[4] memory N,
         bytes32 parametersHash,
         uint256[4] memory u,
         uint256[4] memory w,
@@ -58,24 +58,28 @@ library LibSigmaProtocol {
         internal
         view
     {
-        w = w.normalize(pp.N);
+        w = w.normalize(N);
         // Fiat-Shamir random prime
         uint256 l = PoE.l;
         LibPrime.checkHashToPrime(abi.encode(u, w, parametersHash, PoE.j), l);
 
-        uint256 r = _expMod(2, pp.T, l); // r = 2^T (mod l)
+        uint256 r = _expMod(2, T, l); // r = 2^T (mod l)
         // Check w = π^l * u^r (mod N)
         uint256[4] memory rhs = PoE.pi
-            .expMod(l, pp.N)
-            .mulMod(u.expMod(r, pp.N), pp.N)
-            .normalize(pp.N);
+            .expMod(l, N)
+            .mulMod(u.expMod(r, N), N)
+            .normalize(N);
         require(w.eq(rhs));
     }
 
     function verifyProofOfPuzzleValidity(
-        CicadaCumulativeVote.PublicParameters memory pp,
+        uint256[4] memory N,
+        uint256[4] memory g,
+        uint256[4] memory h,
+        uint256[4] memory y,
         bytes32 parametersHash,
-        CicadaCumulativeVote.Puzzle memory Z,
+        uint256[4] memory u,
+        uint256[4] memory v,
         ProofOfPuzzleValidity memory PoPV
     )
         internal
@@ -87,49 +91,52 @@ library LibSigmaProtocol {
             parametersHash
         )));
 
-        uint256[4] memory lhs = pp.g
-            .expMod(PoPV.alpha, pp.N)
-            .normalize(pp.N);
-        uint256[4] memory rhs = Z.u
-            .expMod(e, pp.N)
-            .mulMod(PoPV.a, pp.N)
-            .normalize(pp.N);
+        uint256[4] memory lhs = g
+            .expMod(PoPV.alpha, N)
+            .normalize(N);
+        uint256[4] memory rhs = u
+            .expMod(e, N)
+            .mulMod(PoPV.a, N)
+            .normalize(N);
         require(lhs.eq(rhs));
 
-        lhs = pp.h
-            .expMod(PoPV.alpha, pp.N)
-            .mulMod(pp.y.expMod(PoPV.beta, pp.N), pp.N)
-            .normalize(pp.N);
-        rhs = Z.v
-            .expMod(e, pp.N)
-            .mulMod(PoPV.b, pp.N)
-            .normalize(pp.N);
+        lhs = h
+            .expMod(PoPV.alpha, N)
+            .mulMod(y.expMod(PoPV.beta, N), N)
+            .normalize(N);
+        rhs = v
+            .expMod(e, N)
+            .mulMod(PoPV.b, N)
+            .normalize(N);
         require(lhs.eq(rhs));
     }
 
     function verifyProofOfPositivity(
-        CicadaCumulativeVote.PublicParameters memory pp,
+        uint256[4] memory N,
+        uint256[4] memory h,
+        uint256[4] memory hInv,
+        uint256[4] memory y,
         bytes32 parametersHash,
-        CicadaCumulativeVote.Puzzle memory Z,
+        uint256[4] memory v,
         ProofOfPositivity memory PoPosS
     )
         internal
         view
     {
         verifyProofOfSquare(
-            pp, 
+            N, h, hInv, y, 
             parametersHash, 
             PoPosS.squareDecomposition[0], 
             PoPosS.PoKSqS[0]
         );
         verifyProofOfSquare(
-            pp, 
+            N, h, hInv, y,
             parametersHash, 
             PoPosS.squareDecomposition[1], 
             PoPosS.PoKSqS[1]
         );
         verifyProofOfSquare(
-            pp, 
+            N, h, hInv, y,
             parametersHash, 
             PoPosS.squareDecomposition[2], 
             PoPosS.PoKSqS[2]
@@ -137,16 +144,16 @@ library LibSigmaProtocol {
 
         uint256[4] memory legendre;
         // v^4 * y = h^(4r) * y^(4s+1)
-        legendre = Z.v.expMod(4, pp.N).mulMod(pp.y, pp.N).normalize(pp.N);
+        legendre = v.expMod(4, N).mulMod(y, N).normalize(N);
 
         uint256[4] memory sumOfSquares;
         sumOfSquares = PoPosS.squareDecomposition[0]
-            .mulMod(PoPosS.squareDecomposition[1], pp.N)
-            .mulMod(PoPosS.squareDecomposition[2], pp.N)
-            .normalize(pp.N);
+            .mulMod(PoPosS.squareDecomposition[1], N)
+            .mulMod(PoPosS.squareDecomposition[2], N)
+            .normalize(N);
 
         verifyProofOfEquality(
-            pp, 
+            N, h, y,
             parametersHash, 
             sumOfSquares, 
             legendre,
@@ -155,7 +162,10 @@ library LibSigmaProtocol {
     }
 
     function verifyProofOfSquare(
-        CicadaCumulativeVote.PublicParameters memory pp,
+        uint256[4] memory N,
+        uint256[4] memory h,
+        uint256[4] memory hInv,
+        uint256[4] memory y,
         bytes32 parametersHash,
         uint256[4] memory squarePuzzle,
         ProofOfSquare memory PoKSqS
@@ -163,39 +173,41 @@ library LibSigmaProtocol {
         internal
         view
     {
-        uint256[4] memory Z1 = PoKSqS.squareRoot;
-        uint256[4] memory Z2 = squarePuzzle;
+        uint256[4] memory v1 = PoKSqS.squareRoot;
+        uint256[4] memory v2 = squarePuzzle;
 
         uint256 e = uint256(keccak256(abi.encode(PoKSqS.A1, PoKSqS.A2, parametersHash)));
 
-        uint256[4] memory lhs = Z1.expMod(e, pp.N)
-            .mulMod(PoKSqS.A1, pp.N)
-            .normalize(pp.N);
-        uint256[4] memory rhs = pp.h.expMod(PoKSqS.w1, pp.N)
-            .mulMod(pp.y.expMod(PoKSqS.x, pp.N), pp.N)
-            .normalize(pp.N);
+        uint256[4] memory lhs = v1.expMod(e, N)
+            .mulMod(PoKSqS.A1, N)
+            .normalize(N);
+        uint256[4] memory rhs = h.expMod(PoKSqS.w1, N)
+            .mulMod(y.expMod(PoKSqS.x, N), N)
+            .normalize(N);
         require(lhs.eq(rhs));
 
-        lhs = Z2.expMod(e, pp.N)
-            .mulMod(PoKSqS.A2, pp.N)
-            .normalize(pp.N);
+        lhs = v2.expMod(e, N)
+            .mulMod(PoKSqS.A2, N)
+            .normalize(N);
         if (PoKSqS.w2IsNegative) {
-            rhs = pp.hInv.expMod(PoKSqS.w2, pp.N)
-                .mulMod(Z1.expMod(PoKSqS.x, pp.N), pp.N)
-                .normalize(pp.N);
+            rhs = hInv.expMod(PoKSqS.w2, N)
+                .mulMod(v1.expMod(PoKSqS.x, N), N)
+                .normalize(N);
         } else {    
-            rhs = pp.h.expMod(PoKSqS.w2, pp.N)
-                .mulMod(Z1.expMod(PoKSqS.x, pp.N), pp.N)
-                .normalize(pp.N);
+            rhs = h.expMod(PoKSqS.w2, N)
+                .mulMod(v1.expMod(PoKSqS.x, N), N)
+                .normalize(N);
         }
         require(lhs.eq(rhs));
     }
 
     function verifyProofOfEquality(
-        CicadaCumulativeVote.PublicParameters memory pp,
+        uint256[4] memory N,
+        uint256[4] memory h,
+        uint256[4] memory y,
         bytes32 parametersHash,
-        uint256[4] memory Z1,
-        uint256[4] memory Z2,
+        uint256[4] memory v1,
+        uint256[4] memory v2,
         ProofOfEquality memory PoKSEq
     )
         internal
@@ -203,20 +215,20 @@ library LibSigmaProtocol {
     {
         uint256 e = uint256(keccak256(abi.encode(PoKSEq.A1, PoKSEq.A2, parametersHash)));
 
-        uint256[4] memory lhs = Z1.expMod(e, pp.N)
-            .mulMod(PoKSEq.A1, pp.N)
-            .normalize(pp.N);
-        uint256[4] memory rhs = pp.h.expMod(PoKSEq.w1, pp.N)
-            .mulMod(pp.y.expMod(PoKSEq.x, pp.N), pp.N)
-            .normalize(pp.N);
+        uint256[4] memory lhs = v1.expMod(e, N)
+            .mulMod(PoKSEq.A1, N)
+            .normalize(N);
+        uint256[4] memory rhs = h.expMod(PoKSEq.w1, N)
+            .mulMod(y.expMod(PoKSEq.x, N), N)
+            .normalize(N);
         require(lhs.eq(rhs));
 
-        lhs = Z2.expMod(e, pp.N)
-            .mulMod(PoKSEq.A2, pp.N)
-            .normalize(pp.N);
-        rhs = pp.h.expMod(PoKSEq.w2, pp.N)
-            .mulMod(pp.y.expMod(PoKSEq.x, pp.N), pp.N)
-            .normalize(pp.N);
+        lhs = v2.expMod(e, N)
+            .mulMod(PoKSEq.A2, N)
+            .normalize(N);
+        rhs = h.expMod(PoKSEq.w2, N)
+            .mulMod(y.expMod(PoKSEq.x, N), N)
+            .normalize(N);
         require(lhs.eq(rhs));
     }
 

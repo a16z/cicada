@@ -94,13 +94,11 @@ abstract contract CicadaCumulativeVote {
     {
         pp.g = pp.g.normalize(pp.N);
         pp.h = pp.h.normalize(pp.N);
-        pp.hInv = pp.hInv;
         // h * h^(-1) = 1 (mod N)
         if (!pp.h.mulMod(pp.hInv, pp.N).eq(1.toUint1024())) {
             revert();
         }
         pp.y = pp.y.normalize(pp.N);
-        pp.yInv = pp.yInv;
         // y * y^(-1) = 1 (mod N)
         if (!pp.y.mulMod(pp.yInv, pp.N).eq(1.toUint1024())) {
             revert();
@@ -283,15 +281,16 @@ abstract contract CicadaCumulativeVote {
         // value
         for (uint256 i = 0; i != ballot.length; i++) {
             LibSigmaProtocol.verifyProofOfPositivity(
-                pp, 
+                pp.N, pp.h, pp.hInv, pp.y, 
                 parametersHash, 
-                ballot[i], 
+                ballot[i].v, 
                 PoBV.PoPosS[i]
             );
             LibSigmaProtocol.verifyProofOfPuzzleValidity(
-                pp,
+                pp.N, pp.g, pp.h, pp.y,
                 parametersHash,
-                ballot[i],
+                ballot[i].u,
+                ballot[i].v,
                 PoBV.PoPV[i]
             );
         }
@@ -317,9 +316,9 @@ abstract contract CicadaCumulativeVote {
         view
     {
         LibSigmaProtocol.verifyExponentiation(
-            pp, 
+            pp.T, pp.N,
             parametersHash, 
-            Z.u, 
+            Z.u,
             w, 
             PoE
         );

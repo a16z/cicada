@@ -46,7 +46,7 @@ contract AuctionWrapper is CicadaAuction {
         address winner,
         uint256[] memory plaintextTallies,
         uint256[4][] memory w,
-        ProofOfExponentiation[] memory proofs
+        LibSigmaProtocol.ProofOfExponentiation[] memory proofs
     )
         external
     {
@@ -132,7 +132,7 @@ contract FinalizeAuctionGeneratedTest is Test {
         ];
         {% endfor %}
 
-        CicadaAuction.ProofOfExponentiation[] memory proofs = new CicadaAuction.ProofOfExponentiation[]({{ numBidBits }});
+        CicadaAuction.LibSigmaProtocol.ProofOfExponentiation[] memory proofs = new CicadaAuction.LibSigmaProtocol.ProofOfExponentiation[]({{ numBidBits }});
         {% for proof in proofs %}
         proofs[{{ loop.index0 }}].pi = [
             {% for element in proof.pi %}

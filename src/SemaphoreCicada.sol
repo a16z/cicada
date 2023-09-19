@@ -96,7 +96,7 @@ contract SemaphoreCicada is CicadaBinaryVote {
         PublicParameters memory pp,
         uint64 tallyPlaintext,
         uint256[4] memory w,
-        ProofOfExponentiation memory PoE
+        LibSigmaProtocol.ProofOfExponentiation memory PoE
     )
         external
     {

@@ -224,7 +224,7 @@ contract AuctionWrapper is CicadaAuction {
         address winner,
         uint256[] memory plaintextTallies,
         uint256[4][] memory w,
-        ProofOfExponentiation[] memory proofs
+        LibSigmaProtocol.ProofOfExponentiation[] memory proofs
     )
         external
     {
@@ -411,7 +411,7 @@ contract FinalizeAuctionGeneratedTest is Test {
             uint256(104478907362388580762136688470753946450183607306407189051492963930355083857046)
         ];
 
-        CicadaAuction.ProofOfExponentiation[] memory proofs = new CicadaAuction.ProofOfExponentiation[](16);
+        LibSigmaProtocol.ProofOfExponentiation[] memory proofs = new LibSigmaProtocol.ProofOfExponentiation[](16);
         proofs[0].pi = [
             4370885181915399807854248208642849742127610444764625054477272994307457154560,            
             16686294816074207032351774146783649323095193315112048832046308243742759205231,            

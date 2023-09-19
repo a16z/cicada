@@ -18,19 +18,30 @@ contract LibSigmaProtocolWrapper {
         external
         view
     {
-        LibSigmaProtocol.verifyProofOfPuzzleValidity(pp, parametersHash, Z, proof);
+        LibSigmaProtocol.verifyProofOfPuzzleValidity(
+            pp.N, pp.g, pp.h, pp.y, 
+            parametersHash, 
+            Z.u, 
+            Z.v, 
+            proof
+        );
     }
 
     function verifyProofOfPositivity(
         CicadaCumulativeVote.PublicParameters memory pp,
         bytes32 parametersHash,
-        CicadaCumulativeVote.Puzzle memory Z,
+        uint256[4] memory v,
         LibSigmaProtocol.ProofOfPositivity memory proof
     )
         external
         view
     {
-        LibSigmaProtocol.verifyProofOfPositivity(pp, parametersHash, Z, proof);
+        LibSigmaProtocol.verifyProofOfPositivity(
+            pp.N, pp.h, pp.hInv, pp.y, 
+            parametersHash, 
+            v, 
+            proof
+        );
     }
 
     function verifyProofOfSquare(
@@ -42,21 +53,32 @@ contract LibSigmaProtocolWrapper {
         external
         view
     {
-        LibSigmaProtocol.verifyProofOfSquare(pp, parametersHash, squarePuzzle, proof);
+        LibSigmaProtocol.verifyProofOfSquare(
+            pp.N, pp.h, pp.hInv, pp.y, 
+            parametersHash, 
+            squarePuzzle, 
+            proof
+        );
     }
 
 
     function verifyProofOfEquality(
         CicadaCumulativeVote.PublicParameters memory pp,
         bytes32 parametersHash,
-        uint256[4] memory Z1,
-        uint256[4] memory Z2,
+        uint256[4] memory v1,
+        uint256[4] memory v2,
         LibSigmaProtocol.ProofOfEquality memory proof
     )
         external
         view
     {
-        LibSigmaProtocol.verifyProofOfEquality(pp, parametersHash, Z1, Z2, proof);
+        LibSigmaProtocol.verifyProofOfEquality(
+            pp.N, pp.h, pp.y, 
+            parametersHash, 
+            v1, 
+            v2, 
+            proof
+        );
     }
 
     function verifyExponentiation(
@@ -69,7 +91,13 @@ contract LibSigmaProtocolWrapper {
         external
         view
     {
-        LibSigmaProtocol.verifyExponentiation(pp, parametersHash, u, w, proof);
+        LibSigmaProtocol.verifyExponentiation(
+            pp.T, pp.N, 
+            parametersHash, 
+            u, 
+            w, 
+            proof
+        );
     }
 }
 
@@ -391,7 +419,7 @@ contract LibSigmaProtocolTest is Test {
             uint256(85526931026625403186329291005039964655356647998635856536445579659119207814031)
         ];
         
-        lib.verifyProofOfPositivity(pp, parametersHash, Z, proof);
+        lib.verifyProofOfPositivity(pp, parametersHash, Z.v, proof);
     }
 
     function testProofOfEquality()

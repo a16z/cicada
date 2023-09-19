@@ -9,7 +9,7 @@ import './LibSigmaProtocol.sol';
 /// @dev Cicada auction base contract. Note that `_createAuction`, `_placeBid`,
 ///      and `_finalizeAuction` assume asset escrow/transfers are implemented by
 ///      the inheriting contract.
-abstract contract CicadaAuction {
+abstract contract CicadaAuction2 {
     using LibUint1024 for *;
 
     struct PublicParameters {
@@ -17,8 +17,10 @@ abstract contract CicadaAuction {
         uint256[4] N;
         uint256[4] g;
         uint256[4] h;
+        uint256[4] hInv;
         uint256[4] y;
         uint256[4] yInv;
+        uint256[4] yM;
     }
 
     struct Puzzle {
@@ -26,15 +28,11 @@ abstract contract CicadaAuction {
         uint256[4] v;
     }
 
-    struct ProofOfValidity {
-        uint256[4] a_0;
-        uint256[4] b_0;
-        uint256[4] t_0;
-        uint256 c_0;
-        uint256[4] a_1;
-        uint256[4] b_1;
-        uint256[4] t_1;
-        uint256 c_1;
+    struct ProofOfBidValidity {
+        uint256[4] vInv;
+        LibSigmaProtocol.ProofOfPuzzleValidity PoPV;
+        LibSigmaProtocol.ProofOfPositivity proofOfPositivity;
+        LibSigmaProtocol.ProofOfPositivity proofOfUpperBound;
     }
 
     struct BidderInfo {
@@ -46,8 +44,9 @@ abstract contract CicadaAuction {
         bytes32 parametersHash;
         uint64 startTime;
         uint64 endTime;
+        uint64 maxBid;
         bool isFinalized;
-        Puzzle[] tallies;
+        Puzzle bids;
         mapping(address => BidderInfo) bidders;
     }
     
@@ -62,34 +61,39 @@ abstract contract CicadaAuction {
     uint256 public nextAuctionId = 1;
     mapping(uint256 => Auction) public auctions;
 
-    uint256 private constant MAX_NUM_BIDDERS = 64;
+    uint256 private constant MAX_BITS = 100;
 
     function _createAuction(
         PublicParameters memory pp,
         uint64 startTime,
         uint64 bidPeriod,
         address[] memory bidders,
-        uint256 numBidBits
+        uint64 maxBid
     )
         internal
     {
-        require(bidders.length <= MAX_NUM_BIDDERS, "Too many bidders");
+        require(bidders.length * LibPrime.bitLen(maxBid) <= MAX_BITS);
 
         pp.g = pp.g.normalize(pp.N);
         pp.h = pp.h.normalize(pp.N);
+        // h * h^(-1) = 1 (mod N)
+        if (!pp.h.mulMod(pp.hInv, pp.N).eq(1.toUint1024())) {
+            revert("Invalid hInv");
+        }
         pp.y = pp.y.normalize(pp.N);
         // y * y^(-1) = 1 (mod N)
         if (!pp.y.mulMod(pp.yInv, pp.N).eq(1.toUint1024())) {
             revert("Invalid yInv");
+        }
+        if (!pp.y.expMod(maxBid, pp.N).normalize(pp.N).eq(pp.yM)) {
+            revert("invalid yM");
         }
 
         uint256 auctionId = nextAuctionId++;
         Auction storage newAuction = auctions[auctionId];
         newAuction.parametersHash = keccak256(abi.encode(pp));
 
-        for (uint256 i = 0; i != numBidBits; i++) {
-            newAuction.tallies.push(Puzzle(pp.g, pp.h));
-        }
+        newAuction.bids = Puzzle(pp.g, pp.h);
         for (uint256 i = 0; i != bidders.length; i++) {
             newAuction.bidders[bidders[i]] = BidderInfo(uint32(i + 1), false);
         }
@@ -102,13 +106,14 @@ abstract contract CicadaAuction {
         newAuction.startTime = startTime;
         uint64 endTime = startTime + bidPeriod;
         newAuction.endTime = endTime;
+        newAuction.maxBid = maxBid;
     }
 
     function _placeBid(
         uint256 auctionId,
         PublicParameters memory pp,
-        Puzzle[] memory bid,
-        ProofOfValidity[] memory validityProofs
+        Puzzle memory bid,
+        ProofOfBidValidity memory validityProof
     )
         internal
     {
@@ -129,20 +134,20 @@ abstract contract CicadaAuction {
             revert ParametersHashMismatch();
         }
         parametersHash = keccak256(abi.encode(parametersHash, msg.sender));
-        
-        uint256[4] memory yInvS = pp.yInv.expMod(1 << (bidderId - 1), pp.N);
 
-        require(bid.length == validityProofs.length, "Array length mismatch");
-        for (uint256 i = 0; i != bid.length; i++) {
-            _verifyBidPuzzleValidity(
-                pp, 
-                parametersHash, 
-                bid[i], 
-                validityProofs[i], 
-                yInvS
-            );
-            _updateTally(pp, auction.tallies[i], bid[i]);
-        }
+        _verifyBidValidity(
+            pp, 
+            parametersHash, 
+            bid, 
+            validityProof
+        );
+        
+        uint256 b = LibPrime.bitLen(auction.maxBid);
+        uint256 offset = 1 << (b * (bidderId - 1));
+        bid.u = bid.u.expMod(offset, pp.N).normalize(pp.N);
+        bid.v = bid.v.expMod(offset, pp.N).normalize(pp.N);
+        
+        _updateTally(pp, auction.bids, bid);
 
         auction.bidders[msg.sender].hasBid = true;
     }
@@ -151,9 +156,9 @@ abstract contract CicadaAuction {
         uint256 auctionId,
         PublicParameters memory pp,
         address winner,
-        uint256[] memory plaintextTallies,
-        uint256[4][] memory w,
-        LibSigmaProtocol.ProofOfExponentiation[] memory PoE
+        uint256 plaintextBids,
+        uint256[4] memory w,
+        LibSigmaProtocol.ProofOfExponentiation memory PoE
     )
         internal
     {
@@ -170,137 +175,69 @@ abstract contract CicadaAuction {
             revert AuctionAlreadyFinalized();
         }
 
-        require(plaintextTallies.length <= auction.tallies.length);
-        require(
-            plaintextTallies.length == w.length &&
-            w.length == PoE.length
+        _verifySolutionCorrectness(
+            pp,
+            parametersHash,
+            auction.bids,
+            plaintextBids,
+            w,
+            PoE
         );
 
-        uint256 remainingBiddersBitvector = (1 << MAX_NUM_BIDDERS) - 1;
-        for (uint256 i = 0; i != plaintextTallies.length; i++) {
-            _verifySolutionCorrectness(
-                pp,
-                parametersHash,
-                auction.tallies[i],
-                plaintextTallies[i],
-                w[i],
-                PoE[i]
-            );
-
-            if (remainingBiddersBitvector & plaintextTallies[i] == 0) {
-                continue;
-            }
-            remainingBiddersBitvector &= plaintextTallies[i];
+        uint256 b = LibPrime.bitLen(auction.maxBid);
+        uint256 bitMask = (1 << b) - 1;
+        uint256 maxBid = 0;
+        for (uint256 shift = 0; shift < 256; shift += b) {
+            uint256 bid = (plaintextBids >> shift) & bitMask;
+            maxBid = bid > maxBid ? bid : maxBid;
         }
 
-        if (remainingBiddersBitvector & (remainingBiddersBitvector - 1) == 0) {
-            // Exactly one bit set => winner
-            
-            // Check that the provided `winner` address is correct
-            // (reverts if `winner` is not a registered bidder, i.e. id is 0)
-            require((1 << (auction.bidders[winner].id - 1)) == remainingBiddersBitvector);
-            
-        } else {
-            // All puzzles must be checked if there is a tie
-            require(plaintextTallies.length == auction.tallies.length);
-            // Can pick any one of the remaining bidders as the winner
-            // (can be replaced with preferred tie-breaking logic)
-            require((1 << (auction.bidders[winner].id - 1) & remainingBiddersBitvector) != 0);
-        }
+        // Reverts if winner is not a registered bidder.
+        uint256 winnerBid = (plaintextBids >> ((auction.bidders[winner].id - 1) * b)) & bitMask;
+        // Provided winner must have the max bid 
+        // (ties broken by whoever finalizes the auction, 
+        // can be replaced with preferred tie-breaking logic)
+        require(winnerBid == maxBid);
 
         auction.isFinalized = true;
     }
 
-    /// @dev OR composition of two DLOG equality sigma protocols:
-    ///          DLOG_g(u) = DLOG_h(v) OR DLOG_g(u) = DLOG(v / y^(2^i))
-    ///      This is equivalent to proving that there exists some
-    ///      value r such that:
-    ///          (u = g^r AND v = h^r) OR (u = v^r AND v = h^r * y^(2^i))
-    ///      where the former case represents a "no" ballot and the
-    ///      latter case represents a "yes" ballot.
-    /// @param pp The public parameters used for the vote.
-    /// @param parametersHash The hash of `pp`.
-    /// @param Z The time-lock puzzle encoding the ballot. 
-    /// @param PoV The proof of ballot validity.
-    function _verifyBidPuzzleValidity(
+    function _verifyBidValidity(
         PublicParameters memory pp,
         bytes32 parametersHash,
         Puzzle memory Z,
-        ProofOfValidity memory PoV,
-        uint256[4] memory yInvS
+        ProofOfBidValidity memory PoV
     )
         internal
         view
     {
-        PoV.a_0 = PoV.a_0.normalize(pp.N);
-        PoV.b_0 = PoV.b_0.normalize(pp.N);
-        PoV.a_1 = PoV.a_1.normalize(pp.N);
-        PoV.b_1 = PoV.b_1.normalize(pp.N);
+        LibSigmaProtocol.verifyProofOfPuzzleValidity(
+            pp.N, pp.g, pp.h, pp.y, 
+            parametersHash, 
+            Z.u, 
+            Z.v, 
+            PoV.PoPV
+        );
 
-        // Fiat-Shamir
-        uint256 c = uint256(keccak256(abi.encode(
-            PoV.a_0,
-            PoV.b_0,
-            PoV.a_1,
-            PoV.b_1,
-            parametersHash
-        )));
+        LibSigmaProtocol.verifyProofOfPositivity(
+            pp.N, pp.h, pp.hInv, pp.y, 
+            parametersHash, 
+            Z.v,
+            PoV.proofOfPositivity
+        );
 
-        // c_0 + c_1 = c (mod 2^256)
-        unchecked {
-            if (PoV.c_0 + PoV.c_1 != c) {
-                revert InvalidBid();
-            }
+        if (!Z.v.mulMod(PoV.vInv, pp.N).eq(1.toUint1024())) {
+            revert("Invalid vInv");
         }
 
-        // g^t_0 = a_0 * u^c_0 (mod N)
-        uint256[4] memory lhs = pp.g
-            .expMod(PoV.t_0, pp.N)
-            .normalize(pp.N);
-        uint256[4] memory rhs = Z.u
-            .expMod(PoV.c_0, pp.N)
-            .mulMod(PoV.a_0, pp.N)
-            .normalize(pp.N);
-        if (!lhs.eq(rhs)) {
-            revert InvalidBid();
-        }
-
-        // h^t_0 = b_0 * v^c_0 (mod N)
-        lhs = pp.h
-            .expMod(PoV.t_0, pp.N)
-            .normalize(pp.N);
-        rhs = Z.v
-            .expMod(PoV.c_0, pp.N)
-            .mulMod(PoV.b_0, pp.N)
-            .normalize(pp.N);
-        if (!lhs.eq(rhs)) {
-            revert InvalidBid();
-        }
-
-        // g^t_1 = a_1 * u^c_1 (mod N)
-        lhs = pp.g
-            .expMod(PoV.t_1, pp.N)
-            .normalize(pp.N);
-        rhs = Z.u
-            .expMod(PoV.c_1, pp.N)
-            .mulMod(PoV.a_1, pp.N)
-            .normalize(pp.N);
-        if (!lhs.eq(rhs)) {
-            revert InvalidBid();
-        }
-
-        // h^t_1 = b_1 * (v * y^(-2^i))^c_1 (mod N)
-        lhs = pp.h
-            .expMod(PoV.t_1, pp.N)
-            .normalize(pp.N);
-        rhs = Z.v
-            .mulMod(yInvS, pp.N)
-            .expMod(PoV.c_1, pp.N)
-            .mulMod(PoV.b_1, pp.N)
-            .normalize(pp.N);
-        if (!lhs.eq(rhs)) {
-            revert InvalidBid();
-        }
+        // y^M * v^(-1) = h^(-r) * y^(M - bid)
+        // (M - bid) >= 0  <=>  bid <= M
+        LibSigmaProtocol.verifyProofOfPositivity(
+            pp.N, pp.h, pp.hInv, pp.y, 
+            parametersHash, 
+            pp.yM.mulMod(PoV.vInv, pp.N).normalize(pp.N),
+            PoV.proofOfPositivity
+        );
     }
 
     /// @dev Verifies that `s` is the plaintext tally encoded in the 
