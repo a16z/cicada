@@ -1,0 +1,158 @@
+// SPDX-License-Identifier: AGPL-3.0
+pragma solidity ^0.8;
+
+import 'forge-std/Test.sol';
+import '../src/CicadaAuction2.sol';
+import '../src/LibUint1024.sol';
+import '../src/LibSigmaProtocol.sol';
+
+
+contract AuctionWrapper is CicadaAuction2 {
+    function createAuction(
+        PublicParameters calldata pp,
+        address[] memory bidders,
+        uint64 maxBid
+    )
+        external
+    {
+        _createAuction(
+            pp,
+            0,
+            0,
+            bidders,
+            maxBid
+        );
+
+        Auction storage auction = auctions[1];
+        auction.bids.u = [
+            {% for element in bids.u %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        auction.bids.v = [
+            {% for element in bids.v %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+    }
+
+    function finalizeAuction(
+        uint256 auctionId,
+        PublicParameters calldata pp,
+        address winner,
+        uint256 plaintextBids,
+        uint256[4] memory w,
+        LibSigmaProtocol.ProofOfExponentiation memory proof
+    )
+        external
+    {
+        _finalizeAuction(
+            auctionId,
+            pp,
+            winner,
+            plaintextBids,
+            w,
+            proof
+        );
+    }
+}
+
+
+contract FinalizeAuction2GeneratedTest is Test {
+    using LibUint1024 for *;
+
+    AuctionWrapper auction;
+
+    function setUp() external {
+        auction = new AuctionWrapper();
+        address[] memory bidders = new address[](3);
+        bidders[1] = address(0xc0ffee2c0de);
+        auction.createAuction(
+            _publicParameters(),
+            bidders,
+            {{ maxBid }}
+        );
+    }
+
+    function _publicParameters() private pure returns (CicadaAuction2.PublicParameters memory pp) {
+        pp.T = {{ T }};
+        pp.N = [
+            {% for element in N %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.g = [
+            {% for element in g %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.h = [
+            {% for element in h %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        pp.hInv = [
+            {% for element in hInv %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.y = [
+            {% for element in y %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.yInv = [
+            {% for element in yInv %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+        pp.yM = [
+            {% for element in yM %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+    }
+
+    function testFinalizeAuction()
+        external
+    {
+        CicadaAuction2.PublicParameters memory pp = _publicParameters();
+
+        uint256 plaintextBids = {{ plaintextBids }};
+
+        uint256[4] memory w = [
+            {% for element in w %}
+            uint256({{ element }}){% if loop.index != 4 %},{% endif %}
+
+            {% endfor %}
+        ];
+
+        LibSigmaProtocol.ProofOfExponentiation memory proof;
+        proof.pi = [
+            {% for element in proof.pi %}
+            {{ element }}{% if loop.index != 4 %},{% endif %}
+            
+            {% endfor %}
+        ];
+        proof.j = {{ proof.j }};
+        proof.l = {{ proof.l }};
+
+        auction.finalizeAuction(
+            1, 
+            pp, 
+            address(0xc0ffee2c0de),
+            plaintextBids,
+            w,
+            proof
+        );
+    }
+}
