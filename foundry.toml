@@ -4,4 +4,7 @@ out = 'out'
 libs = ['lib']
 via_ir = true
 
-# See more config options https://github.com/foundry-rs/foundry/tree/master/config
+# workaround for stack too deep errors with 0.8.26 https://github.com/ethereum/solidity/issues/14358
+solc = "0.8.25"
+
+# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
