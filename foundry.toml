@@ -2,7 +2,9 @@
 src = 'src'
 out = 'out'
 libs = ['lib']
+
 via_ir = true
+optimizer = true
 
 # workaround for stack too deep errors with 0.8.26 https://github.com/ethereum/solidity/issues/14358
 solc = "0.8.25"
